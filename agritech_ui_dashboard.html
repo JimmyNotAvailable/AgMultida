@@ -1,0 +1,1639 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multimodal AgTech | Water Stress Command</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1117;
+      --bg-2: #131722;
+      --surface: #1a1d24;
+      --surface-2: #20242d;
+      --surface-3: #262b36;
+      --line: #2a2d35;
+      --line-strong: #3a4050;
+      --text: #e5e7eb;
+      --muted: #8a93a5;
+      --muted-2: #6b7280;
+      --primary: #2563eb;
+      --primary-soft: rgba(37, 99, 235, 0.16);
+      --healthy: #10b981;
+      --healthy-soft: rgba(16, 185, 129, 0.14);
+      --moderate: #f59e0b;
+      --moderate-soft: rgba(245, 158, 11, 0.14);
+      --critical: #ef4444;
+      --critical-soft: rgba(239, 68, 68, 0.14);
+      --uncertainty: #f97316;
+      --uncertainty-soft: rgba(249, 115, 22, 0.14);
+      --info: #38bdf8;
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+      --radius: 8px;
+      --mono: "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      --sans: "IBM Plex Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f8f9fa;
+      --bg-2: #eef2f7;
+      --surface: #ffffff;
+      --surface-2: #f3f6fb;
+      --surface-3: #e8edf5;
+      --line: #d7dee9;
+      --line-strong: #bdc8d8;
+      --text: #111827;
+      --muted: #536074;
+      --muted-2: #6b7280;
+      --primary-soft: rgba(37, 99, 235, 0.12);
+      --healthy-soft: rgba(16, 185, 129, 0.12);
+      --moderate-soft: rgba(245, 158, 11, 0.14);
+      --critical-soft: rgba(239, 68, 68, 0.12);
+      --uncertainty-soft: rgba(249, 115, 22, 0.12);
+      --shadow: 0 18px 42px rgba(31, 42, 68, 0.13);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--bg);
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.18), transparent 36%),
+        radial-gradient(circle at 72% 18%, rgba(16, 185, 129, 0.15), transparent 27%),
+        linear-gradient(180deg, var(--bg), var(--bg-2));
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: 0;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .app-shell {
+      display: grid;
+      min-height: 100vh;
+      grid-template-rows: 64px 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(145deg, rgba(37, 99, 235, 0.32), rgba(16, 185, 129, 0.18)),
+        var(--surface-2);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      flex: 0 0 auto;
+    }
+
+    .mark svg,
+    .icon {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 24px;
+      font-weight: 650;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand small,
+    .meta-label,
+    .caption,
+    .alert-time {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .icon-button,
+    .rail-button {
+      width: 36px;
+      height: 36px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      color: var(--text);
+      position: relative;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .icon-button:hover,
+    .rail-button:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: var(--surface-3);
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px 6px 6px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr) 320px;
+      gap: 24px;
+      padding: 24px 32px 32px;
+      min-height: 0;
+    }
+
+    .sidebar,
+    .right-panel,
+    .chart-dock,
+    .status-strip {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar,
+    .right-panel {
+      min-height: calc(100vh - 120px);
+      align-self: start;
+      position: sticky;
+      top: 88px;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-title,
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 12px;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .zone-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .zone-row {
+      display: grid;
+      grid-template-columns: 10px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+
+    .zone-row:hover,
+    .zone-row.active {
+      border-color: var(--line-strong);
+      background: var(--surface-2);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--healthy);
+      box-shadow: 0 0 0 4px var(--healthy-soft);
+    }
+
+    .status-dot.moderate {
+      background: var(--moderate);
+      box-shadow: 0 0 0 4px var(--moderate-soft);
+    }
+
+    .status-dot.critical {
+      background: var(--critical);
+      box-shadow: 0 0 0 4px var(--critical-soft);
+    }
+
+    .zone-name {
+      min-width: 0;
+      font-weight: 650;
+    }
+
+    .zone-name span {
+      display: block;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .data-value {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .filter-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .segmented button {
+      min-height: 30px;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .segmented button.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .range {
+      width: 100%;
+      accent-color: var(--primary);
+    }
+
+    .system-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .system-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .system-row strong {
+      color: var(--text);
+      font-family: var(--mono);
+      font-weight: 700;
+    }
+
+    .main-canvas {
+      display: grid;
+      grid-template-rows: minmax(460px, 1fr) auto;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .map-shell {
+      position: relative;
+      min-height: 520px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(0deg, rgba(15, 17, 23, 0.14), rgba(15, 17, 23, 0.14)),
+        repeating-linear-gradient(125deg, rgba(107, 114, 128, 0.09) 0 1px, transparent 1px 22px),
+        linear-gradient(145deg, #183622, #1d3f35 42%, #34363d 69%, #18304a);
+      box-shadow: var(--shadow);
+    }
+
+    body[data-theme="light"] .map-shell {
+      background:
+        linear-gradient(0deg, rgba(248, 249, 250, 0.16), rgba(248, 249, 250, 0.16)),
+        repeating-linear-gradient(125deg, rgba(83, 96, 116, 0.11) 0 1px, transparent 1px 22px),
+        linear-gradient(145deg, #9bc49e, #8fc0be 42%, #bcc0bd 69%, #90afc8);
+    }
+
+    .map-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 0 48px, rgba(255, 255, 255, 0.05) 49px, transparent 50px),
+        linear-gradient(0deg, transparent 0 48px, rgba(255, 255, 255, 0.04) 49px, transparent 50px);
+      background-size: 50px 50px;
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    .map-header {
+      position: absolute;
+      z-index: 3;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .status-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    }
+
+    .status-strip strong {
+      display: block;
+      font-size: 14px;
+      line-height: 20px;
+    }
+
+    .map-tools {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .map-area {
+      position: absolute;
+      inset: 84px 20px 76px 20px;
+    }
+
+    .zone {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      min-width: 84px;
+      min-height: 66px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      color: white;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
+      clip-path: polygon(12% 8%, 88% 0, 100% 42%, 88% 92%, 12% 100%, 0 48%);
+      transition: transform 180ms ease, filter 180ms ease, outline-color 180ms ease;
+    }
+
+    .zone::after {
+      content: attr(data-stress);
+      position: absolute;
+      right: 12px;
+      bottom: 9px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.86);
+    }
+
+    .zone:hover,
+    .zone.active {
+      transform: translateY(-4px) scale(1.02);
+      filter: brightness(1.12);
+      z-index: 4;
+      outline: 2px solid rgba(255, 255, 255, 0.82);
+      outline-offset: 3px;
+    }
+
+    .zone.healthy {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.88), rgba(16, 185, 129, 0.42));
+    }
+
+    .zone.moderate {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(245, 158, 11, 0.42));
+    }
+
+    .zone.critical {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.92), rgba(239, 68, 68, 0.42));
+    }
+
+    .zone.degraded {
+      background-image:
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.24) 0 6px, transparent 6px 12px),
+        linear-gradient(135deg, rgba(249, 115, 22, 0.88), rgba(239, 68, 68, 0.48));
+    }
+
+    .zone-a { width: 19%; height: 23%; left: 8%; top: 9%; }
+    .zone-b { width: 22%; height: 28%; left: 29%; top: 15%; }
+    .zone-c { width: 18%; height: 24%; left: 54%; top: 8%; }
+    .zone-d { width: 20%; height: 27%; left: 72%; top: 30%; }
+    .zone-e { width: 24%; height: 29%; left: 14%; top: 48%; }
+    .zone-f { width: 24%; height: 32%; left: 42%; top: 50%; }
+
+    .tooltip {
+      position: absolute;
+      z-index: 10;
+      display: none;
+      min-width: 194px;
+      padding: 10px 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--surface) 96%, transparent);
+      box-shadow: var(--shadow);
+      pointer-events: none;
+    }
+
+    .tooltip strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .legend {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      z-index: 3;
+      width: min(300px, calc(100% - 32px));
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--surface) 93%, transparent);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    }
+
+    .legend-gradient {
+      height: 9px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--healthy), var(--moderate), var(--critical));
+    }
+
+    .legend-scale {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .degraded-banner {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      z-index: 3;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      max-width: 360px;
+      padding: 12px;
+      border: 1px solid color-mix(in srgb, var(--uncertainty) 46%, var(--line));
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--surface) 90%, var(--uncertainty-soft));
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    }
+
+    body.degraded-mode .degraded-banner {
+      display: flex;
+    }
+
+    .chart-dock {
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .chart-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .chart-head h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 26px;
+      font-weight: 650;
+    }
+
+    .chart {
+      position: relative;
+      height: 190px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 100% 25%, 10% 100%;
+      overflow: hidden;
+    }
+
+    .chart svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .chart-labels {
+      position: absolute;
+      inset: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+    }
+
+    .metric-key {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .key-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .key-line {
+      width: 18px;
+      height: 3px;
+      border-radius: 999px;
+    }
+
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
+
+    .prediction-card,
+    .recommendation-card,
+    .alert-feed,
+    .control-card {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .prediction-card:last-child,
+    .recommendation-card:last-child,
+    .alert-feed:last-child,
+    .control-card:last-child {
+      border-bottom: 0;
+    }
+
+    .prediction-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .prediction-top h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 28px;
+      font-weight: 650;
+    }
+
+    .source-icons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .source-icon {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    body.degraded-mode .source-icon.image-source {
+      color: var(--uncertainty);
+      border-color: color-mix(in srgb, var(--uncertainty) 50%, var(--line));
+      background:
+        repeating-linear-gradient(45deg, transparent 0 5px, var(--uncertainty-soft) 5px 10px),
+        var(--surface-2);
+    }
+
+    .metric-block {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .metric-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .metric-row strong {
+      font-size: 30px;
+      line-height: 38px;
+      letter-spacing: 0;
+    }
+
+    .progress-track {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--surface-3);
+    }
+
+    .progress-fill {
+      width: 78%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--healthy), var(--moderate), var(--critical));
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge.healthy {
+      border-color: color-mix(in srgb, var(--healthy) 45%, var(--line));
+      background: var(--healthy-soft);
+      color: color-mix(in srgb, var(--healthy) 80%, var(--text));
+    }
+
+    .badge.warning {
+      border-color: color-mix(in srgb, var(--uncertainty) 52%, var(--line));
+      background: var(--uncertainty-soft);
+      color: color-mix(in srgb, var(--uncertainty) 78%, var(--text));
+    }
+
+    .badge.critical {
+      border-color: color-mix(in srgb, var(--critical) 52%, var(--line));
+      background: var(--critical-soft);
+      color: color-mix(in srgb, var(--critical) 82%, var(--text));
+    }
+
+    .kv-box {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .kv-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .kv-line strong {
+      color: var(--text);
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 44px 44px;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      color: var(--text);
+      font-weight: 750;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: var(--surface-3);
+      border-color: var(--line-strong);
+    }
+
+    .btn.primary {
+      border-color: color-mix(in srgb, var(--primary) 70%, var(--line));
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn.danger {
+      border-color: color-mix(in srgb, var(--critical) 55%, var(--line));
+      background: var(--critical-soft);
+      color: color-mix(in srgb, var(--critical) 82%, var(--text));
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.44;
+    }
+
+    .ack-row,
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .ack-row input,
+    .toggle-row input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+    }
+
+    .alert-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .alert-item {
+      display: grid;
+      grid-template-columns: 9px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+    }
+
+    .alert-message {
+      min-width: 0;
+      font-size: 12px;
+      line-height: 17px;
+    }
+
+    .alert-message strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .alert-action {
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .command-status {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stepper {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .step {
+      display: grid;
+      place-items: center;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--surface-2);
+    }
+
+    .step.active {
+      border-color: color-mix(in srgb, var(--healthy) 48%, var(--line));
+      background: var(--healthy-soft);
+      color: color-mix(in srgb, var(--healthy) 82%, var(--text));
+    }
+
+    .bottom-nav {
+      display: none;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .reveal {
+      animation: rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 1279px) {
+      .topbar {
+        padding: 0 20px;
+      }
+
+      .layout {
+        grid-template-columns: 72px minmax(0, 1fr);
+        padding: 20px;
+      }
+
+      .sidebar {
+        min-height: calc(100vh - 104px);
+      }
+
+      .sidebar .panel-section:not(:first-child),
+      .zone-name,
+      .zone-row .data-value,
+      .section-title span {
+        display: none;
+      }
+
+      .zone-row {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        min-height: 44px;
+      }
+
+      .right-panel {
+        grid-column: 1 / -1;
+        position: static;
+        min-height: auto;
+        max-height: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .alert-feed,
+      .control-card {
+        border-bottom: 0;
+      }
+    }
+
+    @media (max-width: 767px) {
+      body {
+        padding-bottom: 72px;
+      }
+
+      .app-shell {
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar {
+        min-height: 64px;
+        padding: 10px 14px;
+      }
+
+      .brand h1 {
+        font-size: 15px;
+      }
+
+      .brand small,
+      .user-chip,
+      .top-actions .icon-button:nth-child(1) {
+        display: none;
+      }
+
+      .layout {
+        display: block;
+        padding: 14px;
+      }
+
+      .sidebar {
+        position: static;
+        min-height: auto;
+        margin-bottom: 14px;
+      }
+
+      .sidebar .panel-section:not(:first-child),
+      .zone-name,
+      .zone-row .data-value,
+      .section-title span {
+        display: block;
+      }
+
+      .zone-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .zone-row {
+        grid-template-columns: 10px 1fr;
+        min-height: 58px;
+        align-items: center;
+        justify-items: stretch;
+      }
+
+      .zone-row .data-value {
+        grid-column: 1 / -1;
+        justify-self: start;
+        padding-left: 20px;
+      }
+
+      .main-canvas {
+        display: block;
+      }
+
+      .map-shell {
+        min-height: 520px;
+        margin-bottom: 14px;
+      }
+
+      .map-header {
+        display: grid;
+      }
+
+      .status-strip {
+        width: 100%;
+      }
+
+      .map-tools {
+        justify-content: flex-start;
+      }
+
+      .map-area {
+        inset: 146px 14px 88px;
+      }
+
+      .zone {
+        min-width: 58px;
+        min-height: 52px;
+        font-size: 11px;
+      }
+
+      .legend {
+        left: 14px;
+        bottom: 14px;
+      }
+
+      .degraded-banner {
+        left: 14px;
+        right: 14px;
+        bottom: 80px;
+      }
+
+      .chart-dock {
+        margin-bottom: 14px;
+      }
+
+      .chart-head {
+        display: grid;
+      }
+
+      .chart {
+        height: 220px;
+      }
+
+      .right-panel {
+        display: block;
+        min-height: auto;
+      }
+
+      .action-row {
+        grid-template-columns: 1fr;
+      }
+
+      .action-row .btn {
+        width: 100%;
+      }
+
+      .bottom-nav {
+        position: fixed;
+        z-index: 30;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 10px 14px;
+        border-top: 1px solid var(--line);
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+        backdrop-filter: blur(16px);
+      }
+
+      .bottom-nav .rail-button {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .zone-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .map-shell {
+        min-height: 500px;
+      }
+
+      .zone-a { width: 34%; height: 18%; left: 2%; top: 4%; }
+      .zone-b { width: 38%; height: 21%; left: 39%; top: 9%; }
+      .zone-c { width: 33%; height: 18%; left: 64%; top: 31%; }
+      .zone-d { width: 36%; height: 20%; left: 4%; top: 34%; }
+      .zone-e { width: 40%; height: 22%; left: 22%; top: 59%; }
+      .zone-f { width: 37%; height: 23%; left: 60%; top: 57%; }
+    }
+  </style>
+</head>
+<body class="degraded-mode">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="Project identity">
+        <div class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 14c4-8 12-8 16 0"></path>
+            <path d="M7 14c2.8-4.6 7.2-4.6 10 0"></path>
+            <path d="M12 14v6"></path>
+            <path d="M8 20h8"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>Water Stress Command</h1>
+          <small>Multimodal AgTech Pilot / Mekong Zone Grid</small>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-button" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M12 3v2"></path><path d="M12 19v2"></path><path d="M4.22 4.22l1.42 1.42"></path><path d="M18.36 18.36l1.42 1.42"></path><path d="M3 12h2"></path><path d="M19 12h2"></path><path d="M4.22 19.78l1.42-1.42"></path><path d="M18.36 5.64l1.42-1.42"></path><circle cx="12" cy="12" r="4"></circle>
+          </svg>
+        </button>
+        <button class="icon-button" title="Notifications" aria-label="Notifications">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M10 20h4"></path><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"></path>
+          </svg>
+        </button>
+        <div class="user-chip" aria-label="Signed in user">
+          <span class="avatar">KA</span>
+          <span class="caption">Field Ops</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar reveal" aria-label="Zone filters and system status">
+        <section class="panel-section">
+          <h2 class="section-title"><span>Zone Tree</span></h2>
+          <div class="zone-list" id="zoneList">
+            <button class="zone-row active" data-zone="A12">
+              <span class="status-dot healthy"></span>
+              <span class="zone-name">North A12 <span>orthomosaic fresh</span></span>
+              <span class="data-value">0.22</span>
+            </button>
+            <button class="zone-row" data-zone="B07">
+              <span class="status-dot moderate"></span>
+              <span class="zone-name">Canal B07 <span>weather synced</span></span>
+              <span class="data-value">0.46</span>
+            </button>
+            <button class="zone-row" data-zone="C19">
+              <span class="status-dot critical"></span>
+              <span class="zone-name">Ridge C19 <span>sensor drift watch</span></span>
+              <span class="data-value">0.78</span>
+            </button>
+            <button class="zone-row" data-zone="D03">
+              <span class="status-dot moderate"></span>
+              <span class="zone-name">Delta D03 <span>image missing</span></span>
+              <span class="data-value">0.57</span>
+            </button>
+            <button class="zone-row" data-zone="E24">
+              <span class="status-dot healthy"></span>
+              <span class="zone-name">Block E24 <span>stable trend</span></span>
+              <span class="data-value">0.31</span>
+            </button>
+            <button class="zone-row" data-zone="F15">
+              <span class="status-dot critical"></span>
+              <span class="zone-name">Lowland F15 <span>recovery watch</span></span>
+              <span class="data-value">0.69</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2 class="section-title"><span>Filters</span></h2>
+          <div class="filter-grid">
+            <div class="segmented" aria-label="Time range">
+              <button class="active">24h</button>
+              <button>7d</button>
+              <button>30d</button>
+            </div>
+            <div class="field">
+              <label for="threshold">Stress threshold</label>
+              <input class="range" id="threshold" type="range" min="0" max="100" value="60">
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2 class="section-title"><span>System</span></h2>
+          <div class="system-grid">
+            <div class="system-row"><span>Image</span><strong id="imageStatus">Degraded</strong></div>
+            <div class="system-row"><span>Sensor</span><strong>ACK 02m</strong></div>
+            <div class="system-row"><span>Weather</span><strong>Live</strong></div>
+            <div class="system-row"><span>Queue</span><strong id="queueStatus">Idle</strong></div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="main-canvas">
+        <div class="map-shell reveal" aria-label="Interactive zone stress map">
+          <div class="map-header">
+            <div class="status-strip">
+              <span class="status-dot critical"></span>
+              <div>
+                <strong id="mapTitle">Pilot Area / Latest Stress Overlay</strong>
+                <span class="caption" id="mapSub">Last sync 08:42 UTC / uncertainty weighted</span>
+              </div>
+            </div>
+            <div class="map-tools" aria-label="Map tools">
+              <button class="icon-button" title="Zoom in" aria-label="Zoom in">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+              </button>
+              <button class="icon-button" title="Zoom out" aria-label="Zoom out">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14"></path></svg>
+              </button>
+              <button class="icon-button" id="degradedToggle" title="Toggle degraded mode" aria-label="Toggle degraded mode">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M4 4l16 16"></path><path d="M8.5 8.5A7 7 0 0 1 21 12"></path><path d="M15.5 15.5A7 7 0 0 1 3 12"></path><path d="M12 9v3l2 2"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="map-area" id="mapArea">
+            <button class="zone zone-a healthy active" data-zone="A12" data-stress="22%">A12</button>
+            <button class="zone zone-b moderate" data-zone="B07" data-stress="46%">B07</button>
+            <button class="zone zone-c critical" data-zone="C19" data-stress="78%">C19</button>
+            <button class="zone zone-d degraded moderate" data-zone="D03" data-stress="57%">D03</button>
+            <button class="zone zone-e healthy" data-zone="E24" data-stress="31%">E24</button>
+            <button class="zone zone-f critical" data-zone="F15" data-stress="69%">F15</button>
+          </div>
+
+          <div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
+
+          <div class="legend" aria-label="Stress probability legend">
+            <div class="legend-gradient"></div>
+            <div class="legend-scale">
+              <span>0.0 healthy</span>
+              <span>0.6 watch</span>
+              <span>1.0 critical</span>
+            </div>
+          </div>
+
+          <div class="degraded-banner" aria-live="polite">
+            <span class="badge warning">Reduced confidence</span>
+            <span class="caption">Image modality missing for one zone. Recommendation logic is conservative.</span>
+          </div>
+        </div>
+
+        <section class="chart-dock reveal" aria-label="Time series charts">
+          <div class="chart-head">
+            <div>
+              <h2 id="chartTitle">Aggregate Time-Series Trends</h2>
+              <span class="caption" id="chartSub">Soil moisture, stress probability, irrigation events, rainfall</span>
+            </div>
+            <div class="metric-key" aria-hidden="true">
+              <span class="key-item"><span class="key-line" style="background: var(--healthy);"></span>Moisture</span>
+              <span class="key-item"><span class="key-line" style="background: var(--critical);"></span>Stress</span>
+              <span class="key-item"><span class="key-line" style="background: var(--primary);"></span>Irrigation</span>
+              <span class="key-item"><span class="key-line" style="background: var(--info);"></span>Rainfall</span>
+            </div>
+          </div>
+          <div class="chart" data-testid="trend-chart">
+            <svg viewBox="0 0 900 190" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M0 128 C80 118 120 116 180 106 S290 82 360 96 S470 137 540 118 S680 72 760 88 S840 110 900 86" stroke="#10b981" stroke-width="3" fill="none"></path>
+              <path id="stressLine" d="M0 92 C80 98 130 90 180 84 S288 72 352 82 S460 118 536 88 S668 54 754 62 S830 50 900 34" stroke="#ef4444" stroke-width="3" fill="none"></path>
+              <path d="M0 152 L90 152 L90 120 L116 120 L116 152 L445 152 L445 102 L472 102 L472 152 L780 152 L780 112 L806 112 L806 152 L900 152" stroke="#2563eb" stroke-width="3" fill="none"></path>
+              <path d="M0 164 C88 160 136 166 210 148 S350 160 430 142 S565 122 642 130 S750 148 900 118" stroke="#38bdf8" stroke-width="3" fill="none" opacity="0.9"></path>
+            </svg>
+            <div class="chart-labels">
+              <span class="caption">08:00</span>
+              <span class="caption">12:00</span>
+              <span class="caption">16:00</span>
+              <span class="caption">20:00</span>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="right-panel reveal" aria-label="AI prediction and recommendation">
+        <section class="prediction-card">
+          <h2 class="card-title">AI Prediction</h2>
+          <div class="prediction-top">
+            <div>
+              <h2 id="selectedZone">Zone A12</h2>
+              <span class="caption" id="timestamp">08:42 UTC / 24 Apr 2026</span>
+            </div>
+            <div class="source-icons" aria-label="Data sources">
+              <span class="source-icon image-source" title="Image source">
+                <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 13l2.5-3 3.5 4.5 2-2.5 3 4"></path></svg>
+              </span>
+              <span class="source-icon" title="Sensor source">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M8 7h8"></path><path d="M9 11h6"></path><path d="M10 15h4"></path></svg>
+              </span>
+              <span class="source-icon" title="Weather source">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.3 2A3.5 3.5 0 0 0 7.5 19z"></path></svg>
+              </span>
+            </div>
+          </div>
+          <div class="metric-block">
+            <div class="metric-row">
+              <span class="meta-label">Stress Probability</span>
+              <strong id="stressPercent">22%</strong>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="stressFill" style="width: 22%;"></div>
+            </div>
+            <div class="metric-row">
+              <span class="badge healthy" id="uncertaintyBadge">Uncertainty 0.18</span>
+              <button class="btn" type="button" id="explainBtn">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M3 12h18"></path><path d="M12 3v18"></path><circle cx="12" cy="12" r="8"></circle></svg>
+                View Explanation
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="recommendation-card">
+          <h2 class="card-title">Irrigation Recommendation</h2>
+          <div class="metric-row">
+            <span class="badge healthy" id="recBadge">No Irrigation</span>
+            <span class="data-value" id="recVolume">0 mm</span>
+          </div>
+          <div class="kv-box" aria-label="Recommendation trigger rule">
+            <div class="kv-line"><span>Stress</span><strong id="kvStress">0.22</strong></div>
+            <div class="kv-line"><span>Soil Moisture</span><strong id="kvMoisture">39%</strong></div>
+            <div class="kv-line"><span>Rain Forecast 3h</span><strong id="kvRain">28%</strong></div>
+          </div>
+          <label class="ack-row">
+            <input type="checkbox" id="ackCheck">
+            <span>Acknowledge uncertainty and proceed</span>
+          </label>
+          <div class="action-row">
+            <button class="btn primary" id="confirmBtn" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"></path></svg>
+              Confirm
+            </button>
+            <button class="btn" id="adjustBtn" title="Adjust volume" aria-label="Adjust volume">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 21v-7"></path><path d="M4 10V3"></path><path d="M12 21v-9"></path><path d="M12 8V3"></path><path d="M20 21v-5"></path><path d="M20 12V3"></path><path d="M2 14h4"></path><path d="M10 8h4"></path><path d="M18 16h4"></path></svg>
+            </button>
+            <button class="btn danger" id="declineBtn" title="Decline" aria-label="Decline">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+            </button>
+          </div>
+          <div class="command-status">
+            <div class="stepper" aria-label="Command queue status">
+              <span class="step" id="stepSending">Sending</span>
+              <span class="step" id="stepAck">ACK</span>
+              <span class="step" id="stepActive">Active</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="alert-feed">
+          <h2 class="card-title">Alert Feed</h2>
+          <div class="alert-list">
+            <div class="alert-item">
+              <span class="status-dot critical"></span>
+              <div class="alert-message"><strong>C19 stress spike</strong><span class="alert-time">08:42 | Ridge | Review</span></div>
+              <span class="alert-action">Open</span>
+            </div>
+            <div class="alert-item">
+              <span class="status-dot moderate"></span>
+              <div class="alert-message"><strong>D03 image gap</strong><span class="alert-time">08:35 | Delta | Log</span></div>
+              <span class="alert-action">Trace</span>
+            </div>
+            <div class="alert-item">
+              <span class="status-dot healthy"></span>
+              <div class="alert-message"><strong>Weather sync</strong><span class="alert-time">08:31 | All zones | Done</span></div>
+              <span class="alert-action">OK</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="control-card">
+          <h2 class="card-title">Controls</h2>
+          <label class="toggle-row">
+            <input type="checkbox" id="manualOverride">
+            <span>Manual Override</span>
+          </label>
+          <div class="field" style="margin-top: 12px;">
+            <label for="volumeRange">Volume adjustment</label>
+            <input class="range" id="volumeRange" type="range" min="0" max="32" value="0">
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <nav class="bottom-nav" aria-label="Mobile navigation">
+    <button class="rail-button" title="Map" aria-label="Map"><svg class="icon" viewBox="0 0 24 24"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3z"></path><path d="M9 3v15"></path><path d="M15 6v15"></path></svg></button>
+    <button class="rail-button" title="Charts" aria-label="Charts"><svg class="icon" viewBox="0 0 24 24"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-7"></path></svg></button>
+    <button class="rail-button" title="Alerts" aria-label="Alerts"><svg class="icon" viewBox="0 0 24 24"><path d="M10 20h4"></path><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"></path></svg></button>
+    <button class="rail-button" title="Controls" aria-label="Controls"><svg class="icon" viewBox="0 0 24 24"><path d="M4 21v-7"></path><path d="M4 10V3"></path><path d="M12 21v-9"></path><path d="M12 8V3"></path><path d="M20 21v-5"></path><path d="M20 12V3"></path><path d="M2 14h4"></path><path d="M10 8h4"></path><path d="M18 16h4"></path></svg></button>
+  </nav>
+
+  <script>
+    const zones = {
+      A12: { label: "Zone A12", name: "North A12", stress: 0.22, moisture: 39, rain: 28, uncertainty: 0.18, rec: "No Irrigation", volume: 0, state: "healthy", path: "M0 128 C80 118 120 116 180 106 S290 82 360 96 S470 137 540 118 S680 72 760 88 S840 110 900 86" },
+      B07: { label: "Zone B07", name: "Canal B07", stress: 0.46, moisture: 26, rain: 18, uncertainty: 0.24, rec: "Light", volume: 8, state: "moderate", path: "M0 118 C90 104 128 122 202 96 S320 74 404 84 S540 132 602 106 S730 82 900 66" },
+      C19: { label: "Zone C19", name: "Ridge C19", stress: 0.78, moisture: 18, rain: 12, uncertainty: 0.34, rec: "Heavy", volume: 28, state: "critical", path: "M0 98 C78 106 152 86 218 72 S330 64 412 76 S506 122 594 70 S724 44 900 34" },
+      D03: { label: "Zone D03", name: "Delta D03", stress: 0.57, moisture: 22, rain: 9, uncertainty: 0.41, rec: "Moderate", volume: 18, state: "moderate", path: "M0 126 C82 116 144 128 210 100 S350 80 430 96 S558 144 630 96 S750 72 900 58" },
+      E24: { label: "Zone E24", name: "Block E24", stress: 0.31, moisture: 33, rain: 24, uncertainty: 0.21, rec: "Light", volume: 6, state: "healthy", path: "M0 136 C90 128 142 120 214 112 S340 94 418 104 S548 138 624 118 S762 88 900 92" },
+      F15: { label: "Zone F15", name: "Lowland F15", stress: 0.69, moisture: 20, rain: 14, uncertainty: 0.29, rec: "Moderate", volume: 22, state: "critical", path: "M0 106 C86 98 148 102 216 84 S342 68 420 82 S526 126 610 82 S742 54 900 48" }
+    };
+
+    const body = document.body;
+    const zoneButtons = [...document.querySelectorAll("[data-zone]")];
+    const mapZones = [...document.querySelectorAll(".map-area .zone")];
+    const tooltip = document.getElementById("tooltip");
+    const selectedZone = document.getElementById("selectedZone");
+    const timestamp = document.getElementById("timestamp");
+    const stressPercent = document.getElementById("stressPercent");
+    const stressFill = document.getElementById("stressFill");
+    const uncertaintyBadge = document.getElementById("uncertaintyBadge");
+    const recBadge = document.getElementById("recBadge");
+    const recVolume = document.getElementById("recVolume");
+    const kvStress = document.getElementById("kvStress");
+    const kvMoisture = document.getElementById("kvMoisture");
+    const kvRain = document.getElementById("kvRain");
+    const ackCheck = document.getElementById("ackCheck");
+    const confirmBtn = document.getElementById("confirmBtn");
+    const volumeRange = document.getElementById("volumeRange");
+    const queueStatus = document.getElementById("queueStatus");
+    const stressLine = document.getElementById("stressLine");
+    const chartTitle = document.getElementById("chartTitle");
+    const chartSub = document.getElementById("chartSub");
+    const mapTitle = document.getElementById("mapTitle");
+    const mapSub = document.getElementById("mapSub");
+    const imageStatus = document.getElementById("imageStatus");
+
+    let currentZone = "A12";
+
+    function stateClass(zone) {
+      if (zone.uncertainty > 0.3) return "warning";
+      return zone.state === "critical" ? "critical" : "healthy";
+    }
+
+    function recommendationClass(zone) {
+      if (zone.rec === "Heavy") return "critical";
+      if (zone.rec === "Moderate") return "warning";
+      return "healthy";
+    }
+
+    function setActiveZone(zoneId) {
+      currentZone = zoneId;
+      const zone = zones[zoneId];
+      zoneButtons.forEach((button) => button.classList.toggle("active", button.dataset.zone === zoneId));
+      mapZones.forEach((button) => button.classList.toggle("active", button.dataset.zone === zoneId));
+
+      selectedZone.textContent = zone.label;
+      timestamp.textContent = "08:42 UTC / 24 Apr 2026";
+      stressPercent.textContent = `${Math.round(zone.stress * 100)}%`;
+      stressFill.style.width = `${Math.round(zone.stress * 100)}%`;
+      uncertaintyBadge.textContent = zone.uncertainty > 0.3 ? `Uncertainty ${zone.uncertainty.toFixed(2)} / Requires confirmation` : `Uncertainty ${zone.uncertainty.toFixed(2)}`;
+      uncertaintyBadge.className = `badge ${stateClass(zone)}`;
+      recBadge.textContent = zone.rec;
+      recBadge.className = `badge ${recommendationClass(zone)}`;
+      recVolume.textContent = `${zone.volume} mm`;
+      kvStress.textContent = zone.stress.toFixed(2);
+      kvMoisture.textContent = `${zone.moisture}%`;
+      kvRain.textContent = `${zone.rain}%`;
+      volumeRange.value = zone.volume;
+      stressLine.setAttribute("d", zone.path);
+      chartTitle.textContent = `${zone.name} Time-Series Trends`;
+      chartSub.textContent = "Filtered by selected zone and synchronized image/sensor timestamp";
+      mapTitle.textContent = `${zone.name} / Stress Overlay`;
+      mapSub.textContent = zone.uncertainty > 0.3 ? "Operating with reduced confidence" : "Image, sensor, and weather modalities aligned";
+      ackCheck.checked = false;
+      refreshConfirmState();
+      resetStepper();
+    }
+
+    function refreshConfirmState() {
+      const zone = zones[currentZone];
+      confirmBtn.disabled = zone.uncertainty > 0.3 && !ackCheck.checked;
+    }
+
+    function resetStepper() {
+      ["stepSending", "stepAck", "stepActive"].forEach((id) => document.getElementById(id).classList.remove("active"));
+      queueStatus.textContent = "Idle";
+    }
+
+    function runCommandQueue() {
+      const steps = ["stepSending", "stepAck", "stepActive"];
+      queueStatus.textContent = "Sending";
+      steps.forEach((id) => document.getElementById(id).classList.remove("active"));
+      steps.forEach((id, index) => {
+        setTimeout(() => {
+          document.getElementById(id).classList.add("active");
+          queueStatus.textContent = index === 0 ? "Sending" : index === 1 ? "ACK" : "Active";
+        }, index * 520);
+      });
+    }
+
+    zoneButtons.forEach((button) => {
+      button.addEventListener("click", () => setActiveZone(button.dataset.zone));
+    });
+
+    mapZones.forEach((zoneEl) => {
+      zoneEl.addEventListener("mouseenter", () => {
+        const zone = zones[zoneEl.dataset.zone];
+        tooltip.innerHTML = `<strong>${zone.name}</strong><span class="caption">Stress ${Math.round(zone.stress * 100)}% / Uncertainty ${zone.uncertainty.toFixed(2)}<br>Last update 08:42 UTC</span>`;
+        tooltip.style.display = "block";
+      });
+      zoneEl.addEventListener("mousemove", (event) => {
+        const rect = document.querySelector(".map-shell").getBoundingClientRect();
+        tooltip.style.left = `${event.clientX - rect.left + 14}px`;
+        tooltip.style.top = `${event.clientY - rect.top + 14}px`;
+      });
+      zoneEl.addEventListener("mouseleave", () => {
+        tooltip.style.display = "none";
+      });
+    });
+
+    ackCheck.addEventListener("change", refreshConfirmState);
+    confirmBtn.addEventListener("click", runCommandQueue);
+    document.getElementById("declineBtn").addEventListener("click", resetStepper);
+
+    document.getElementById("adjustBtn").addEventListener("click", () => {
+      volumeRange.focus();
+      volumeRange.value = Math.min(32, Number(volumeRange.value) + 2);
+      recVolume.textContent = `${volumeRange.value} mm`;
+    });
+
+    volumeRange.addEventListener("input", () => {
+      recVolume.textContent = `${volumeRange.value} mm`;
+    });
+
+    document.getElementById("manualOverride").addEventListener("change", (event) => {
+      confirmBtn.disabled = event.target.checked ? false : confirmBtn.disabled;
+      queueStatus.textContent = event.target.checked ? "Manual" : "Idle";
+    });
+
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      body.dataset.theme = body.dataset.theme === "light" ? "dark" : "light";
+    });
+
+    document.getElementById("degradedToggle").addEventListener("click", () => {
+      body.classList.toggle("degraded-mode");
+      imageStatus.textContent = body.classList.contains("degraded-mode") ? "Degraded" : "Live";
+    });
+
+    setActiveZone(currentZone);
+  </script>
+</body>
+</html>
