@@ -1,0 +1,77 @@
+# Data Contract: Aligned Multimodal Sample
+# Version: 1.0.0
+# Owner: MultimodalAgTech Phase 1
+# Single source of truth for BE (Pydantic), ML (PyTorch Dataset), AI System.
+
+contract:
+  name: aligned_multimodal_sample
+  version: "1.0.0"
+
+fields:
+  sample_id:
+    type: string
+    required: true
+    pattern: "^[A-Z]\\d{2}_\\d{8}_[A-Z0-9]+$"
+    example: "A01_20240214_S2"
+
+  zone_id:
+    type: string
+    required: true
+    pattern: "^[A-Z]\\d{2}$"
+
+  timestamp:
+    type: datetime_utc
+    required: true
+    format: ISO8601
+    timezone: UTC
+
+  image:
+    type: float32_tensor
+    shape: [4, 224, 224]
+    required: true
+    channels: [B2_blue, B3_green, B4_red, B8_nir]
+    normalization: "[0.0, 1.0]"
+
+  sensor_seq:
+    type: float32_tensor
+    shape: [48, 8]
+    required: true
+    features: [soil_moisture, soil_temp, air_temp, humidity, ec, ph, rain_3h, rain_24h]
+    temporal_resolution: "1h"
+    lookback: "48h"
+    normalization: min_max_per_feature
+
+  weather_ctx:
+    type: float32_tensor
+    shape: [6]
+    required: true
+    features: [rain_forecast_3h, rain_24h_cumulative, temp_max_24h, temp_min_24h, humidity_avg_24h, et0_daily]
+    padding: "unused dims zero-filled, active count in weather_dim"
+
+  modality_mask:
+    type: float32_tensor
+    shape: [3]
+    required: true
+    semantics: "[image_available, sensor_available, weather_available]"
+    values: "1.0=present, 0.0=missing"
+
+  label:
+    type: float32
+    range: [0.0, 1.0]
+    required: true
+
+  source_trace:
+    type: json
+    required: true
+    fields:
+      image_source: string
+      sensor_sources: list
+      weather_source: string
+      label_formula: string
+      alignment_method: string
+      cloud_rate: float
+
+constraints:
+  no_look_ahead: "sensor/weather data must be <= timestamp"
+  timezone: "All timestamps UTC"
+  missing_handling: "Zero-fill + modality_mask[i]=0.0"

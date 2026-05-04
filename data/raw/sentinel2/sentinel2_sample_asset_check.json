@@ -1,8 +1,0 @@
-{
-  "band": "SCL",
-  "href": "https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/48/P/WS/2026/4/S2B_T48PWS_20260429T032740_L2A/SCL.tif",
-  "status_code": 200,
-  "content_type": "image/tiff; application=geotiff; profile=cloud-optimized",
-  "content_length": "4826676",
-  "accessible": true
-}
