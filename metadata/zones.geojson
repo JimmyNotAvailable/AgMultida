@@ -1,0 +1,137 @@
+{
+  "type": "FeatureCollection",
+  "name": "mekong_delta_realtime_validation_zones",
+  "metadata": {
+    "country": "Vietnam",
+    "region": "Mekong Delta",
+    "crop_type": "rice",
+    "local_timezone": "Asia/Ho_Chi_Minh",
+    "storage_timezone": "UTC",
+    "synthetic_test_polygon": true,
+    "purpose": "pipeline_validation_only",
+    "not_field_boundary": true,
+    "notes": "Temporary validation polygons only. These are not audited field boundaries."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "A01",
+        "zone_name": "An Giang validation zone A01",
+        "province": "An Giang",
+        "crop_type": "rice",
+        "split": "train",
+        "synthetic_test_polygon": true,
+        "purpose": "pipeline_validation_only",
+        "not_field_boundary": true,
+        "local_timezone": "Asia/Ho_Chi_Minh",
+        "geometry_source": "synthetic_validation_polygon",
+        "notes": "Temporary polygon for pipeline validation only; not a real field boundary."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[105.0200, 10.4500], [105.0600, 10.4500], [105.0600, 10.4900], [105.0200, 10.4900], [105.0200, 10.4500]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "A02",
+        "zone_name": "An Giang validation zone A02",
+        "province": "An Giang",
+        "crop_type": "rice",
+        "split": "train",
+        "synthetic_test_polygon": true,
+        "purpose": "pipeline_validation_only",
+        "not_field_boundary": true,
+        "local_timezone": "Asia/Ho_Chi_Minh",
+        "geometry_source": "synthetic_validation_polygon",
+        "notes": "Temporary polygon for pipeline validation only; not a real field boundary."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[105.1300, 10.3600], [105.1700, 10.3600], [105.1700, 10.4000], [105.1300, 10.4000], [105.1300, 10.3600]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "A03",
+        "zone_name": "Can Tho validation zone A03",
+        "province": "Can Tho",
+        "crop_type": "rice",
+        "split": "train",
+        "synthetic_test_polygon": true,
+        "purpose": "pipeline_validation_only",
+        "not_field_boundary": true,
+        "local_timezone": "Asia/Ho_Chi_Minh",
+        "geometry_source": "synthetic_validation_polygon",
+        "notes": "Temporary polygon for pipeline validation only; not a real field boundary."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[105.5600, 10.0400], [105.6000, 10.0400], [105.6000, 10.0800], [105.5600, 10.0800], [105.5600, 10.0400]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "D01",
+        "zone_name": "Dong Thap validation zone D01",
+        "province": "Dong Thap",
+        "crop_type": "rice",
+        "split": "val",
+        "synthetic_test_polygon": true,
+        "purpose": "pipeline_validation_only",
+        "not_field_boundary": true,
+        "local_timezone": "Asia/Ho_Chi_Minh",
+        "geometry_source": "synthetic_validation_polygon",
+        "notes": "Temporary polygon for pipeline validation only; not a real field boundary."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[105.6500, 10.4900], [105.6900, 10.4900], [105.6900, 10.5300], [105.6500, 10.5300], [105.6500, 10.4900]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "E01",
+        "zone_name": "Dong Thap validation zone E01",
+        "province": "Dong Thap",
+        "crop_type": "rice",
+        "split": "test",
+        "synthetic_test_polygon": true,
+        "purpose": "pipeline_validation_only",
+        "not_field_boundary": true,
+        "local_timezone": "Asia/Ho_Chi_Minh",
+        "geometry_source": "synthetic_validation_polygon",
+        "notes": "Temporary polygon for pipeline validation only; not a real field boundary."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[105.8100, 10.2900], [105.8500, 10.2900], [105.8500, 10.3300], [105.8100, 10.3300], [105.8100, 10.2900]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "F01",
+        "zone_name": "Can Tho validation zone F01",
+        "province": "Can Tho",
+        "crop_type": "rice",
+        "split": "test",
+        "synthetic_test_polygon": true,
+        "purpose": "pipeline_validation_only",
+        "not_field_boundary": true,
+        "local_timezone": "Asia/Ho_Chi_Minh",
+        "geometry_source": "synthetic_validation_polygon",
+        "notes": "Temporary polygon for pipeline validation only; not a real field boundary."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[105.7000, 9.9800], [105.7400, 9.9800], [105.7400, 10.0200], [105.7000, 10.0200], [105.7000, 9.9800]]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,216 @@
+version: "0.3.0"
+status: "gee_free_realtime_ready_metadata"
+project: "Multimodal AgTech Water Stress Detection"
+source_status_values:
+  - "PASS"
+  - "WARN"
+  - "FAIL"
+  - "BLOCKED_AUTH"
+  - "SOURCE_DELAYED"
+  - "OPTIONAL_BLOCKED"
+  - "DISABLED"
+sources:
+  sentinel2_gee:
+    id: "sentinel2_gee"
+    enabled: false
+    disabled_reason: "GEE_PROJECT_BILLING_BLOCKED"
+    priority: "disabled"
+    required: false
+    auth_required: true
+    realtime_expectation: "near_realtime_not_instant"
+    lookback_days: 14
+    fallback_allowed: true
+    unavailable_statuses:
+      - "DISABLED"
+      - "BLOCKED_AUTH"
+    provider: "Google Earth Engine"
+    collection: "COPERNICUS/S2_SR_HARMONIZED"
+    bands:
+      - "B2"
+      - "B3"
+      - "B4"
+      - "B8"
+      - "SCL"
+    output_dir: "data/raw/sentinel2"
+    script: "scripts/download_sentinel2_gee.py"
+    qa_script: "scripts/qa_sentinel2.py"
+    credential_policy: "earthengine_user_auth"
+    latest_available_policy: "Disabled for current path; use sentinel2_stac instead."
+    notes: "Disabled because GEE project/billing/auth flow is blocking progress."
+  sentinel2_stac:
+    id: "sentinel2_stac"
+    enabled: true
+    priority: "P0"
+    required: true
+    auth_required: false
+    realtime_expectation: "near_realtime_not_instant"
+    lookback_days: 14
+    fallback_allowed: true
+    unavailable_statuses:
+      - "SOURCE_DELAYED"
+      - "FAIL"
+    provider: "STAC"
+    provider_priority:
+      - id: "aws_earth_search"
+        name: "AWS Earth Search"
+        stac_url: "https://earth-search.aws.element84.com/v1"
+        collection: "sentinel-2-c1-l2a"
+      - id: "microsoft_planetary_computer"
+        name: "Microsoft Planetary Computer"
+        stac_url: "https://planetarycomputer.microsoft.com/api/stac/v1"
+        collection: "sentinel-2-l2a"
+      - id: "copernicus_data_space"
+        name: "Copernicus Data Space"
+        stac_url: "https://catalogue.dataspace.copernicus.eu/stac"
+        collection: "SENTINEL-2"
+        requires_account: true
+    bands:
+      - "B02"
+      - "B03"
+      - "B04"
+      - "B08"
+      - "SCL"
+    metadata_fields:
+      - "scene_id"
+      - "datetime"
+      - "cloud_cover"
+      - "asset_href"
+      - "provider"
+      - "checksum"
+    output_dir: "data/raw/sentinel2"
+    script: "scripts/download_sentinel2_stac.py"
+    credential_policy: "public_stac"
+    latest_available_policy: "Search STAC providers backward within lookback_days. If no scene is available for local today, set latest_available_date and status SOURCE_DELAYED."
+    notes: "Primary GEE-free Sentinel-2 path."
+  chirps_gee:
+    id: "chirps_gee"
+    enabled: false
+    disabled_reason: "GEE_PROJECT_BILLING_BLOCKED"
+    priority: "disabled"
+    required: false
+    auth_required: true
+    realtime_expectation: "delayed_daily_precipitation"
+    lookback_days: 14
+    fallback_allowed: true
+    unavailable_statuses:
+      - "DISABLED"
+      - "BLOCKED_AUTH"
+    provider: "Google Earth Engine"
+    collection: "UCSB-CHG/CHIRPS/DAILY"
+    variables:
+      - "precipitation"
+    output_dir: "data/raw/chirps"
+    script: "scripts/download_chirps_gee.py"
+    credential_policy: "earthengine_user_auth"
+    latest_available_policy: "Disabled for current path; use chirps_direct instead."
+    notes: "Disabled because GEE project/billing/auth flow is blocking progress."
+  chirps_direct:
+    id: "chirps_direct"
+    enabled: true
+    priority: "P0"
+    required: true
+    auth_required: false
+    realtime_expectation: "delayed_daily_precipitation"
+    lookback_days: 14
+    fallback_allowed: false
+    unavailable_statuses:
+      - "SOURCE_DELAYED"
+      - "FAIL"
+    provider: "Climate Hazards Center direct repository"
+    direct_base_url: "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/tifs/p05"
+    variables:
+      - "precipitation"
+    derived_features:
+      - "rain_1d"
+      - "rain_3d_sum"
+      - "rain_7d_sum"
+      - "dry_spell_days"
+      - "rain_anomaly_30d"
+    output_dir: "data/raw/chirps"
+    script: "scripts/download_chirps_direct.py"
+    credential_policy: "direct_http"
+    latest_available_policy: "Search backward within lookback_days when daily precipitation for local today is unavailable."
+    notes: "Primary GEE-free CHIRPS direct download path."
+  open_meteo:
+    id: "open_meteo"
+    enabled: true
+    priority: "P0"
+    required: true
+    auth_required: false
+    realtime_expectation: "fast_historical_weather_fallback"
+    lookback_days: 14
+    fallback_allowed: true
+    unavailable_statuses:
+      - "FAIL"
+      - "SOURCE_DELAYED"
+    provider: "Open-Meteo Archive API"
+    endpoint: "https://archive-api.open-meteo.com/v1/archive"
+    purpose: "Required weather fallback and cross-check context"
+    variables:
+      - "temperature_2m"
+      - "relative_humidity_2m"
+      - "dew_point_2m"
+      - "precipitation"
+      - "rain"
+      - "wind_speed_10m"
+      - "shortwave_radiation"
+      - "et0_fao_evapotranspiration"
+    output_dir: "data/raw/open_meteo"
+    script: "scripts/download_open_meteo.py"
+    credential_policy: "none"
+    latest_available_policy: "Use as required weather fallback; if unavailable, report FAIL or SOURCE_DELAYED with reason."
+    notes: "Required no-auth weather source."
+  era5_land:
+    id: "era5_land"
+    enabled: true
+    priority: "optional_preferred"
+    required: false
+    auth_required: true
+    realtime_expectation: "reanalysis_delay_possible"
+    lookback_days: 14
+    fallback_allowed: true
+    unavailable_statuses:
+      - "OPTIONAL_BLOCKED"
+      - "BLOCKED_AUTH"
+      - "SOURCE_DELAYED"
+    provider: "Copernicus Climate Data Store"
+    dataset: "reanalysis-era5-land"
+    variables:
+      - "2m_temperature"
+      - "2m_dewpoint_temperature"
+      - "skin_temperature"
+      - "volumetric_soil_water_layer_1"
+      - "volumetric_soil_water_layer_2"
+      - "total_precipitation"
+      - "potential_evaporation"
+      - "10m_u_component_of_wind"
+      - "10m_v_component_of_wind"
+    output_dir: "data/raw/era5_land"
+    script: "scripts/download_era5_land.py"
+    process_script: "scripts/process_era5_land.py"
+    credential_policy: "cdsapi_user_local_file"
+    latest_available_policy: "Optional preferred reanalysis source; if CDS auth or product availability is missing, mark optional status explicitly."
+    notes: "Optional preferred weather source. Missing auth does not block GEE-free minimum path."
+  smap:
+    id: "smap"
+    enabled: true
+    priority: "optional"
+    required: false
+    auth_required: true
+    realtime_expectation: "product_delay_possible"
+    lookback_days: 14
+    fallback_allowed: true
+    unavailable_statuses:
+      - "OPTIONAL_BLOCKED"
+      - "BLOCKED_AUTH"
+      - "SOURCE_DELAYED"
+    provider: "NASA Earthdata / NSIDC"
+    dataset: "SPL3SMP_E"
+    variables:
+      - "soil_moisture"
+      - "quality_flag"
+    output_dir: "data/raw/smap"
+    script: "scripts/download_smap.py"
+    credential_policy: "env_or_user_local_file"
+    latest_available_policy: "Optional soil moisture source; blocked auth or delayed product must not be marked PASS."
+    notes: "Optional soil moisture source. Missing auth does not block GEE-free minimum path."

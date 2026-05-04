@@ -1,0 +1,50 @@
+version: "0.2.0"
+status: "realtime_ready_metadata"
+timezone_policy:
+  local_timezone: "Asia/Ho_Chi_Minh"
+  storage_timezone: "UTC"
+  timestamp_format: "ISO-8601 UTC"
+  local_date_format: "YYYY-MM-DD"
+  no_naive_datetime: true
+  scheduling_uses_local_timezone: true
+  storage_query_logs_use_utc: true
+collection_modes:
+  historical_backfill:
+    enabled: true
+    purpose: "Phase 1 validation dataset from historical public sources"
+    start_date: "2024-01-01"
+    end_date: "2024-06-30"
+    local_timezone: "Asia/Ho_Chi_Minh"
+    storage_timezone: "UTC"
+    utc_query_start: "2023-12-31T17:00:00Z"
+    utc_query_end_exclusive: "2024-06-30T17:00:00Z"
+    use_cases:
+      - "pipeline_validation"
+      - "raw_data_qa"
+      - "processing_alignment"
+  realtime_incremental:
+    enabled: true
+    purpose: "Near-realtime scheduled ingestion metadata for future operation"
+    local_timezone: "Asia/Ho_Chi_Minh"
+    run_at_local: "06:00"
+    lookback_days: 14
+    latest_available_policy: "If local today is unavailable, search backward within lookback_days and set latest_available_date. Return SOURCE_DELAYED only when the source is delayed, and FAIL only if the whole lookback window is unavailable."
+    source_delay_policy: "Sources may return SOURCE_DELAYED when data for local today is not yet available."
+source_status_policy:
+  blocked_or_delayed_must_not_pass: true
+  blocked_auth_status: "BLOCKED_AUTH"
+  delayed_status: "SOURCE_DELAYED"
+  optional_blocked_status: "OPTIONAL_BLOCKED"
+  pass_requires_current_or_latest_available_date: true
+  latest_available_date_required_for:
+    - "PASS"
+    - "WARN"
+    - "SOURCE_DELAYED"
+realtime_status_values:
+  - "PASS"
+  - "WARN"
+  - "FAIL"
+  - "BLOCKED_AUTH"
+  - "SOURCE_DELAYED"
+  - "OPTIONAL_BLOCKED"
+notes: "Realtime-ready metadata only. Real download still requires APPROVE DATA REAL DOWNLOAD."

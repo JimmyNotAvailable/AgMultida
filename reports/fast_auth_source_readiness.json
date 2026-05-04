@@ -1,0 +1,58 @@
+{
+  "dry_run_evidence": "PASS: python3 scripts/run_data_collection.py --dry-run checked 5 sources and writes_primary_data=false",
+  "executive_verdict": "STILL_BLOCKED_GEE_AUTH",
+  "fast_auth_status": {
+    "cds": {
+      "cdsapirc_present": false,
+      "module_available": true,
+      "status": "MISSING"
+    },
+    "earthdata": {
+      "EARTHDATA_PASSWORD_present": false,
+      "EARTHDATA_USERNAME_present": false,
+      "status": "MISSING"
+    },
+    "gee": {
+      "credential_file_present": false,
+      "initialize_status": "ERROR_REQUIRES_AUTHENTICATE",
+      "module_available": true,
+      "status": "MISSING"
+    },
+    "open_meteo": {
+      "auth_required": false,
+      "status": "READY"
+    }
+  },
+  "generated_at_utc": "2026-05-04T08:09:18.663793+00:00",
+  "optional_blocked_sources": [
+    {
+      "reason": "CDS ~/.cdsapirc is missing",
+      "source": "era5_land",
+      "status": "OPTIONAL_BLOCKED"
+    },
+    {
+      "reason": "Earthdata env vars are missing",
+      "source": "smap",
+      "status": "OPTIONAL_BLOCKED"
+    }
+  ],
+  "optional_ready_sources": [],
+  "pytest_evidence": "PASS: 19 passed",
+  "real_download_approval_phrase_required": "APPROVE DATA REAL DOWNLOAD",
+  "required_blocked_sources": [
+    {
+      "reason": "Google Earth Engine auth is missing",
+      "source": "sentinel2",
+      "status": "BLOCKED_AUTH"
+    },
+    {
+      "reason": "Google Earth Engine auth is missing",
+      "source": "chirps",
+      "status": "BLOCKED_AUTH"
+    }
+  ],
+  "required_ready_sources": [
+    "open_meteo"
+  ],
+  "secret_scan_evidence": "PASS: no credential patterns found"
+}

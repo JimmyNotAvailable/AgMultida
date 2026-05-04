@@ -1,0 +1,28 @@
+{
+  "blockers": [
+    "Google Earth Engine credential file missing",
+    "Copernicus CDS ~/.cdsapirc missing",
+    "Earthdata username/password environment variables missing"
+  ],
+  "copernicus_cds": {
+    "auth_check_method": "file_presence_only_content_not_read",
+    "cdsapirc_present": false,
+    "python_module_available": true
+  },
+  "earthdata": {
+    "EARTHDATA_PASSWORD_present": false,
+    "EARTHDATA_USERNAME_present": false,
+    "auth_check_method": "environment_presence_only_values_not_printed"
+  },
+  "generated_at_utc": "2026-05-04T07:39:40.954172+00:00",
+  "google_earth_engine": {
+    "auth_check_method": "presence_only_no_api_call",
+    "credential_file_present": false,
+    "python_module_available": true
+  },
+  "open_meteo": {
+    "auth_required": false,
+    "status": "no_auth_required"
+  },
+  "status": "missing_auth_prerequisites"
+}
