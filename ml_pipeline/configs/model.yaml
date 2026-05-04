@@ -1,0 +1,67 @@
+# Model Configuration: Multimodal Water Stress Detection
+# Version: 1.0.0
+# Synced with contracts/data_contract.yaml and contracts/onnx_io_contract.yaml
+
+model:
+  name: multimodal_stress_net
+  version: "1.0.0"
+
+image_encoder:
+  backbone: efficientnet_b3
+  pretrained: imagenet
+  in_channels: 4  # RGB + NIR
+  nir_init: mean_rgb  # Initialize NIR channel weights as mean of RGB
+  output_dim: 256
+
+temporal_encoder:
+  type: gru
+  input_dim: 8
+  hidden_dim: 128
+  num_layers: 2
+  dropout: 0.3
+  bidirectional: false
+  temporal_attention: true
+  output_dim: 256
+
+weather_encoder:
+  type: mlp
+  input_dim: 6  # Padded fixed dimension
+  hidden_dim: 64
+  output_dim: 256
+  norm: layer_norm
+  activation: gelu
+
+fusion:
+  type: cross_attention
+  d_model: 256
+  num_heads: 4
+  direction: one_way  # image queries sensor+weather
+  dropout: 0.1
+
+head:
+  dims: [768, 256, 1]  # concat(img, attn_sensor, attn_weather) -> logits
+  dropout: 0.3
+  output: raw_logits  # sigmoid applied only at inference
+
+regularization:
+  modality_dropout: 0.3
+  label_smoothing: 0.1
+
+training:
+  loss: bce_with_logits
+  pos_weight: 1.5
+  optimizer: adamw
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  scheduler: one_cycle_lr
+  scheduler_pct_start: 0.1
+  batch_size: 32
+  max_epochs: 50
+  early_stopping_patience: 7
+  amp: true
+  seed: 42
+
+export:
+  format: onnx
+  opset: 17
+  dynamic_batch: true
