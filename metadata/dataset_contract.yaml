@@ -1,0 +1,112 @@
+version: "0.2.0"
+status: "realtime_ready_metadata"
+sample_schema:
+  - name: "sample_id"
+    type: "string"
+    required: true
+  - name: "zone_id"
+    type: "string"
+    required: true
+  - name: "timestamp"
+    type: "datetime_utc"
+    required: true
+  - name: "timestamp_utc"
+    type: "datetime_utc_iso8601"
+    required: true
+  - name: "local_date"
+    type: "date_yyyy_mm_dd"
+    required: true
+  - name: "local_timezone"
+    type: "iana_timezone"
+    required: true
+  - name: "image_path"
+    type: "path"
+    required: true
+  - name: "sensor_seq_path"
+    type: "path"
+    required: true
+  - name: "weather_ctx_path"
+    type: "path"
+    required: true
+  - name: "modality_mask"
+    type: "array[3]"
+    required: true
+  - name: "stress_label"
+    type: "float_0_1"
+    required: true
+  - name: "cloud_rate"
+    type: "float_0_1"
+    required: true
+  - name: "source_trace"
+    type: "json"
+    required: true
+  - name: "source_latest_available_date"
+    type: "date_yyyy_mm_dd_or_null"
+    required: true
+  - name: "source_status"
+    type: "enum"
+    required: true
+  - name: "checksum"
+    type: "sha256"
+    required: true
+timezone_policy:
+  local_timezone: "Asia/Ho_Chi_Minh"
+  storage_timezone: "UTC"
+  timestamp_format: "ISO-8601 UTC"
+  no_naive_datetime: true
+local_utc_boundary_policy:
+  local_date_timezone: "Asia/Ho_Chi_Minh"
+  utc_query_window_start: "inclusive"
+  utc_query_window_end: "exclusive"
+  example_local_date: "2024-01-01"
+  example_utc_start: "2023-12-31T17:00:00Z"
+  example_utc_end_exclusive: "2024-01-01T17:00:00Z"
+source_status_values:
+  - "PASS"
+  - "WARN"
+  - "FAIL"
+  - "BLOCKED_AUTH"
+  - "SOURCE_DELAYED"
+  - "OPTIONAL_BLOCKED"
+source_status_policy:
+  blocked_or_delayed_must_not_pass: true
+  source_latest_available_date_required_for:
+    - "PASS"
+    - "WARN"
+    - "SOURCE_DELAYED"
+tensor_shapes:
+  image:
+    - 4
+    - 224
+    - 224
+  sequence:
+    - 48
+    - 8
+  weather_context:
+    min_features: 2
+    max_features: 6
+  label:
+    - 1
+  modality_mask:
+    - 3
+alignment:
+  anchor: "sentinel2_timestamp_t0"
+  sequence_window: "[t0-48h, t0]"
+  allow_future_features: false
+  missing_modality_policy: "record_modality_mask"
+  missing_artifact_value:
+proxy_label:
+  formula: "sigmoid(weighted stress components)"
+  output_range:
+    - 0.0
+    - 1.0
+  trace_required: true
+  weights:
+    soil_moisture_deficit: 0.40
+    ndvi_anomaly: 0.35
+    et_deficit: 0.25
+    rain_relief: -0.15
+    heat_penalty: 0.15
+splits:
+  leakage_policy: "no_zone_time_overlap"
+  default_strategy: "spatiotemporal_block"

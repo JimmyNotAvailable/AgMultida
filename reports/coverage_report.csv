@@ -1,0 +1,8 @@
+source_id,status,priority,provider,latest_available_date,files_count,total_size_mb,date_range_start,date_range_end,zones_covered,notes
+sentinel2_stac,PASS,P0,aws_earth_search,2026-04-29,3,0.01,2026-04-20,2026-05-04,6,"13 scenes cataloged; bands B02/B03/B04/B08/SCL indexed; asset URLs verified accessible"
+chirps_direct,PASS,P0,CHC_direct_http,2026-03-31,12,38.5,2026-03-21,2026-03-31,global,"11 daily GeoTIFFs downloaded; ~35-day production lag expected; 34 recent dates 404 (normal)"
+open_meteo,PASS,P0,forecast_api_past_days,2026-05-04,14,0.04,2026-04-20,2026-05-04,6,"6/6 zones PASS; 12 daily weather variables; JSON+CSV per zone + combined CSV"
+sentinel2_gee,DISABLED,disabled,N/A,N/A,0,0,N/A,N/A,0,"GEE_PROJECT_BILLING_BLOCKED"
+chirps_gee,DISABLED,disabled,N/A,N/A,0,0,N/A,N/A,0,"GEE_PROJECT_BILLING_BLOCKED"
+era5_land,OPTIONAL_BLOCKED,optional_preferred,N/A,N/A,0,0,N/A,N/A,0,"Auth-gated CDS; not required for GEE-free minimum path"
+smap,OPTIONAL_BLOCKED,optional,N/A,N/A,0,0,N/A,N/A,0,"Auth-gated NASA Earthdata; not required for GEE-free minimum path"

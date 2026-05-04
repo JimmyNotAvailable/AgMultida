@@ -1,0 +1,5 @@
+[core]
+    remote = agtech_data_remote
+
+['remote "agtech_data_remote"']
+    url = replace-with-your-dvc-remote

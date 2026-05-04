@@ -1,0 +1,17 @@
+stages:
+  collect_dry_run:
+    cmd: python3 scripts/run_data_collection.py --dry-run
+    deps:
+      - metadata/source_registry.yaml
+      - metadata/zones.geojson
+      - metadata/zone_registry.csv
+      - metadata/date_range.yaml
+      - scripts/run_data_collection.py
+    outs:
+      - reports/coverage_report.csv:
+          persist: true
+  validate_contract:
+    cmd: python3 scripts/validate_dataset_contract.py --dataset-dir data/processed/final
+    deps:
+      - metadata/dataset_contract.yaml
+      - scripts/validate_dataset_contract.py

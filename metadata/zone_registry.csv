@@ -1,0 +1,7 @@
+zone_id,zone_name,country,region,province,crop_type,split,synthetic_test_polygon,purpose,not_field_boundary,local_timezone,geometry_source,notes
+A01,An Giang validation zone A01,Vietnam,Mekong Delta,An Giang,rice,train,true,pipeline_validation_only,true,Asia/Ho_Chi_Minh,synthetic_validation_polygon,Temporary polygon for pipeline validation only; not a real field boundary
+A02,An Giang validation zone A02,Vietnam,Mekong Delta,An Giang,rice,train,true,pipeline_validation_only,true,Asia/Ho_Chi_Minh,synthetic_validation_polygon,Temporary polygon for pipeline validation only; not a real field boundary
+A03,Can Tho validation zone A03,Vietnam,Mekong Delta,Can Tho,rice,train,true,pipeline_validation_only,true,Asia/Ho_Chi_Minh,synthetic_validation_polygon,Temporary polygon for pipeline validation only; not a real field boundary
+D01,Dong Thap validation zone D01,Vietnam,Mekong Delta,Dong Thap,rice,val,true,pipeline_validation_only,true,Asia/Ho_Chi_Minh,synthetic_validation_polygon,Temporary polygon for pipeline validation only; not a real field boundary
+E01,Dong Thap validation zone E01,Vietnam,Mekong Delta,Dong Thap,rice,test,true,pipeline_validation_only,true,Asia/Ho_Chi_Minh,synthetic_validation_polygon,Temporary polygon for pipeline validation only; not a real field boundary
+F01,Can Tho validation zone F01,Vietnam,Mekong Delta,Can Tho,rice,test,true,pipeline_validation_only,true,Asia/Ho_Chi_Minh,synthetic_validation_polygon,Temporary polygon for pipeline validation only; not a real field boundary

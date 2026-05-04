@@ -1,0 +1,163 @@
+{
+  "source": "open_meteo",
+  "download_timestamp_utc": "2026-05-04T09:43:28.598837+00:00",
+  "endpoint": "https://archive-api.open-meteo.com/v1/archive",
+  "variables": [
+    "temperature_2m",
+    "relative_humidity_2m",
+    "dew_point_2m",
+    "precipitation",
+    "rain",
+    "wind_speed_10m",
+    "shortwave_radiation",
+    "et0_fao_evapotranspiration"
+  ],
+  "date_range": {
+    "start": "2026-04-20",
+    "end": "2026-05-04"
+  },
+  "zones_queried": 6,
+  "zone_results": [
+    {
+      "zone_id": "A01",
+      "status": "PASS",
+      "rows": 14,
+      "variables": [
+        "time",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "temperature_2m_mean",
+        "relative_humidity_2m_max",
+        "relative_humidity_2m_min",
+        "dew_point_2m_min",
+        "dew_point_2m_max",
+        "precipitation_sum",
+        "rain_sum",
+        "wind_speed_10m_max",
+        "shortwave_radiation_sum",
+        "et0_fao_evapotranspiration"
+      ],
+      "date_range": "2026-04-20 to 2026-05-03"
+    },
+    {
+      "zone_id": "A02",
+      "status": "PASS",
+      "rows": 14,
+      "variables": [
+        "time",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "temperature_2m_mean",
+        "relative_humidity_2m_max",
+        "relative_humidity_2m_min",
+        "dew_point_2m_min",
+        "dew_point_2m_max",
+        "precipitation_sum",
+        "rain_sum",
+        "wind_speed_10m_max",
+        "shortwave_radiation_sum",
+        "et0_fao_evapotranspiration"
+      ],
+      "date_range": "2026-04-20 to 2026-05-03"
+    },
+    {
+      "zone_id": "A03",
+      "status": "PASS",
+      "rows": 14,
+      "variables": [
+        "time",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "temperature_2m_mean",
+        "relative_humidity_2m_max",
+        "relative_humidity_2m_min",
+        "dew_point_2m_min",
+        "dew_point_2m_max",
+        "precipitation_sum",
+        "rain_sum",
+        "wind_speed_10m_max",
+        "shortwave_radiation_sum",
+        "et0_fao_evapotranspiration"
+      ],
+      "date_range": "2026-04-20 to 2026-05-03"
+    },
+    {
+      "zone_id": "D01",
+      "status": "PASS",
+      "rows": 14,
+      "variables": [
+        "time",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "temperature_2m_mean",
+        "relative_humidity_2m_max",
+        "relative_humidity_2m_min",
+        "dew_point_2m_min",
+        "dew_point_2m_max",
+        "precipitation_sum",
+        "rain_sum",
+        "wind_speed_10m_max",
+        "shortwave_radiation_sum",
+        "et0_fao_evapotranspiration"
+      ],
+      "date_range": "2026-04-20 to 2026-05-03"
+    },
+    {
+      "zone_id": "E01",
+      "status": "PASS",
+      "rows": 14,
+      "variables": [
+        "time",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "temperature_2m_mean",
+        "relative_humidity_2m_max",
+        "relative_humidity_2m_min",
+        "dew_point_2m_min",
+        "dew_point_2m_max",
+        "precipitation_sum",
+        "rain_sum",
+        "wind_speed_10m_max",
+        "shortwave_radiation_sum",
+        "et0_fao_evapotranspiration"
+      ],
+      "date_range": "2026-04-20 to 2026-05-03"
+    },
+    {
+      "zone_id": "F01",
+      "status": "PASS",
+      "rows": 14,
+      "variables": [
+        "time",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "temperature_2m_mean",
+        "relative_humidity_2m_max",
+        "relative_humidity_2m_min",
+        "dew_point_2m_min",
+        "dew_point_2m_max",
+        "precipitation_sum",
+        "rain_sum",
+        "wind_speed_10m_max",
+        "shortwave_radiation_sum",
+        "et0_fao_evapotranspiration"
+      ],
+      "date_range": "2026-04-20 to 2026-05-03"
+    }
+  ],
+  "files_written": [
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A01.json",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A01.csv",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A02.json",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A02.csv",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A03.json",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A03.csv",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_D01.json",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_D01.csv",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_E01.json",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_E01.csv",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_F01.json",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_F01.csv",
+    "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_combined.csv"
+  ]
+}

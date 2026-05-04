@@ -1,0 +1,66 @@
+{
+  "dependencies": {
+    "cdsapi": {
+      "available": true,
+      "module": "cdsapi",
+      "version": "0.7.7"
+    },
+    "dvc": {
+      "available": true,
+      "module": "dvc",
+      "version": "3.67.1"
+    },
+    "earthengine-api": {
+      "available": true,
+      "module": "ee",
+      "version": "1.7.24"
+    },
+    "geemap": {
+      "available": true,
+      "module": "geemap",
+      "version": "0.37.2"
+    },
+    "geopandas": {
+      "available": true,
+      "module": "geopandas",
+      "version": "1.1.3"
+    },
+    "h5py": {
+      "available": true,
+      "module": "h5py",
+      "version": "3.16.0"
+    },
+    "netCDF4": {
+      "available": true,
+      "module": "netCDF4",
+      "version": "1.7.4"
+    },
+    "pandas": {
+      "available": true,
+      "module": "pandas",
+      "version": "2.3.3"
+    },
+    "pytest": {
+      "available": true,
+      "module": "pytest",
+      "version": "9.0.3"
+    },
+    "requests": {
+      "available": true,
+      "module": "requests",
+      "version": "2.33.0"
+    },
+    "xarray": {
+      "available": true,
+      "module": "xarray",
+      "version": "2025.6.1"
+    }
+  },
+  "generated_at_utc": "2026-05-04T07:39:40.954172+00:00",
+  "missing": [],
+  "notes": [
+    "requirements-data.txt updated to include geemap, netCDF4, and h5py."
+  ],
+  "requirements_file": "requirements-data.txt",
+  "status": "ready"
+}
