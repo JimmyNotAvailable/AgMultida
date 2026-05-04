@@ -1,0 +1,51 @@
+# Decision Contract: Irrigation Recommendation
+# Version: 1.0.0
+# Consumed by: ai_system/decision_engine, backend/decision-engine, FE dashboard
+
+contract:
+  name: irrigation_decision
+  version: "1.0.0"
+
+actions: [NO_IRRIGATION, LIGHT, MODERATE, HEAVY, HOLD]
+
+thresholds:
+  uncertainty_gate: 0.30
+  degraded_uncertainty_multiplier: 1.3
+  rain_override: 0.40
+  critical_stress: 0.60
+  critical_moisture: 25.0
+  moderate_stress: 0.40
+  moderate_moisture: 30.0
+  early_watch: 0.25
+
+volume_mapping:
+  NO_IRRIGATION: 0.0
+  LIGHT: 5.0
+  MODERATE: 12.0
+  HEAVY: 20.0
+  HOLD: 0.0
+
+decision_flow:
+  - {step: 1, condition: "rain_forecast_3h > 0.40", action: NO_IRRIGATION, reason: rain_override, require_ack: false}
+  - {step: 2, condition: "uncertainty > 0.30 OR degraded_mode", action: HOLD, reason: high_uncertainty_or_degraded, require_ack: true}
+  - {step: 3, condition: "stress_prob > 0.60 AND soil_moisture < 25", action: HEAVY, reason: critical_stress_low_moisture, require_ack: false}
+  - {step: 4, condition: "stress_prob > 0.40 AND soil_moisture < 30", action: MODERATE, reason: moderate_stress, require_ack: false}
+  - {step: 5, condition: "stress_prob > 0.25", action: LIGHT, reason: early_watch, require_ack: false}
+  - {step: 6, condition: default, action: NO_IRRIGATION, reason: healthy_range, require_ack: false}
+
+safety_invariants:
+  - "uncertainty > 0.30 MUST return HOLD with require_ack=true"
+  - "missing modality MUST set degraded_mode=true"
+  - "degraded_mode MUST multiply uncertainty by 1.3"
+  - "no silent fallback without explicit degraded_mode flag"
+
+output_schema:
+  trace_id: {type: uuid4, required: true}
+  action: {type: enum, values: [NO_IRRIGATION, LIGHT, MODERATE, HEAVY, HOLD]}
+  volume_mm: {type: float, range: [0.0, 30.0]}
+  require_ack: {type: bool}
+  reason: {type: string}
+  safety_override: {type: bool, default: false}
+  degraded_mode: {type: bool}
+  confidence_flag: {type: enum, values: [high, medium, low]}
+  explanation: {type: list}
