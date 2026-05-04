@@ -525,3 +525,1194 @@ Sentinel-2 làm trục chính
 [3]: https://www.ecmwf.int/en/era5-land?utm_source=chatgpt.com "ERA5-Land"
 [4]: https://www.chc.ucsb.edu/data/chirps?utm_source=chatgpt.com "CHIRPS: Rainfall Estimates from Rain Gauge and Satellite ..."
 [5]: https://open-meteo.com/en/docs/historical-weather-api?utm_source=chatgpt.com "️ Historical Weather API"
+Dưới đây là phần **bổ sung “Cách thu thập dữ liệu”** theo dạng có thể đưa thẳng cho **Codex agent** thực thi. Nội dung gồm: **nguồn dữ liệu, cách tải, script cần tạo, input/output, lệnh chạy, tiêu chí kiểm tra**.
+
+---
+
+# BỔ SUNG KẾ HOẠCH THU THẬP DỮ LIỆU
+
+## Multimodal AgTech — Real-World Public Dataset Pipeline
+
+## 1. Mục tiêu của Codex agent
+
+Codex agent cần tạo một pipeline tải dữ liệu thực tế công khai cho bài toán phát hiện stress nước cây trồng, gồm:
+
+```text
+1. Sentinel-2 L2A RGB+NIR imagery
+2. ERA5-Land hourly weather/soil variables
+3. CHIRPS daily rainfall
+4. SMAP L3 soil moisture
+5. Open-Meteo historical weather fallback
+6. Zone polygons + metadata
+7. Coverage report + quality report
+```
+
+Pipeline phải xuất dữ liệu về cấu trúc:
+
+```text
+data/
+├── raw/
+│   ├── sentinel2/
+│   ├── era5_land/
+│   ├── chirps/
+│   ├── smap/
+│   └── open_meteo/
+├── metadata/
+│   ├── zones.geojson
+│   ├── zone_registry.csv
+│   ├── source_registry.yaml
+│   └── download_log.json
+├── reports/
+│   ├── coverage_report.csv
+│   ├── cloud_report.csv
+│   ├── missing_rate_report.csv
+│   └── source_quality_report.md
+└── interim/
+    ├── image_index.parquet
+    ├── environment_hourly.parquet
+    └── environment_daily.parquet
+```
+
+---
+
+# 2. Nguồn dữ liệu và cách tải
+
+## 2.1. Sentinel-2 L2A — ảnh RGB+NIR
+
+### Nguồn
+
+Dùng **Google Earth Engine dataset**:
+
+```text
+COPERNICUS/S2_SR_HARMONIZED
+```
+
+Dataset này là Sentinel-2 Level-2A Surface Reflectance, có revisit khoảng 5 ngày, phù hợp để lấy B2, B3, B4, B8 cho RGB+NIR. ([Google for Developers][1])
+
+### Band cần tải
+
+| Band | Ý nghĩa                                       | Resolution |
+| ---- | --------------------------------------------- | ---------: |
+| B2   | Blue                                          |        10m |
+| B3   | Green                                         |        10m |
+| B4   | Red                                           |        10m |
+| B8   | NIR                                           |        10m |
+| SCL  | Scene Classification Layer, cloud/shadow mask |        20m |
+
+### Cách tải
+
+Dùng `earthengine-api` + `geemap`.
+
+### Script cần tạo
+
+```text
+scripts/download_sentinel2_gee.py
+```
+
+### Input
+
+```text
+--zones metadata/zones.geojson
+--start-date 2024-01-01
+--end-date 2024-06-30
+--cloud-threshold 30
+--output-dir data/raw/sentinel2
+```
+
+### Output
+
+```text
+data/raw/sentinel2/
+├── A01/
+│   ├── 20240112_patch.npy
+│   ├── 20240112_ndvi.npy
+│   ├── 20240112_cloudmask.npy
+│   └── 20240112_metadata.json
+└── ...
+```
+
+### Logic tải
+
+Codex agent cần implement:
+
+```python
+# scripts/download_sentinel2_gee.py
+
+import ee
+import geemap
+import json
+import argparse
+import numpy as np
+from pathlib import Path
+
+def mask_s2_clouds(image):
+    scl = image.select("SCL")
+    # Keep vegetation, bare soil, water if needed; remove cloud/shadow/snow
+    valid = (
+        scl.neq(3)   # cloud shadow
+        .And(scl.neq(8))   # medium probability cloud
+        .And(scl.neq(9))   # high probability cloud
+        .And(scl.neq(10))  # cirrus
+        .And(scl.neq(11))  # snow/ice
+    )
+    return image.updateMask(valid)
+
+def add_ndvi(image):
+    ndvi = image.normalizedDifference(["B8", "B4"]).rename("NDVI")
+    return image.addBands(ndvi)
+
+def download_sentinel2_for_zone(zone_geom, zone_id, start_date, end_date, cloud_threshold, output_dir):
+    collection = (
+        ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+        .filterBounds(zone_geom)
+        .filterDate(start_date, end_date)
+        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", cloud_threshold))
+        .map(mask_s2_clouds)
+        .map(add_ndvi)
+        .select(["B2", "B3", "B4", "B8", "NDVI", "SCL"])
+    )
+
+    # TODO:
+    # 1. Iterate image collection.
+    # 2. Clip each image by zone_geom.
+    # 3. Export bands as GeoTIFF or numpy array.
+    # 4. Resize/crop later to [224,224,4].
+    # 5. Save metadata JSON: source, date, cloud %, zone_id, bands.
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--zones", required=True)
+    parser.add_argument("--start-date", required=True)
+    parser.add_argument("--end-date", required=True)
+    parser.add_argument("--cloud-threshold", type=float, default=30)
+    parser.add_argument("--output-dir", default="data/raw/sentinel2")
+    args = parser.parse_args()
+
+    ee.Initialize()
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    # TODO: load GeoJSON zones and call download_sentinel2_for_zone()
+
+if __name__ == "__main__":
+    main()
+```
+
+### Lệnh chạy
+
+```bash
+python scripts/download_sentinel2_gee.py \
+  --zones metadata/zones.geojson \
+  --start-date 2024-01-01 \
+  --end-date 2024-06-30 \
+  --cloud-threshold 30 \
+  --output-dir data/raw/sentinel2
+```
+
+### QA sau tải
+
+Codex agent cần tạo thêm:
+
+```text
+scripts/qa_sentinel2.py
+```
+
+Kiểm tra:
+
+```text
+- Mỗi zone có ít nhất 20 scene hợp lệ
+- Cloud rate trung bình < 20–30%
+- Mỗi sample có đủ B2, B3, B4, B8
+- NDVI nằm trong [-1,1]
+- Metadata JSON tồn tại cho mọi patch
+```
+
+---
+
+## 2.2. ERA5-Land — dữ liệu hourly soil/weather
+
+### Nguồn
+
+Dùng **Copernicus Climate Data Store — ERA5-Land hourly data**.
+
+ERA5-Land cung cấp dữ liệu hourly từ 1950 tới hiện tại/gần hiện tại, gồm temperature, soil water, radiation, evaporation, runoff, wind, pressure và precipitation. ([Climate Data Store][2])
+
+Có thể tải bằng:
+
+```text
+cdsapi
+```
+
+Hoặc dùng Google Earth Engine dataset:
+
+```text
+ECMWF/ERA5_LAND/HOURLY
+```
+
+GEE cũng có ERA5-Land hourly và ghi nhận dataset có các biến từ CDS. ([Google for Developers][3])
+
+### Biến cần tải
+
+| Variable CDS                                         | Tên dùng trong pipeline |
+| ---------------------------------------------------- | ----------------------- |
+| `2m_temperature`                                     | `air_temp`              |
+| `2m_dewpoint_temperature`                            | `dewpoint`              |
+| `skin_temperature`                                   | `surface_temp`          |
+| `volumetric_soil_water_layer_1`                      | `soil_moisture_l1`      |
+| `volumetric_soil_water_layer_2`                      | `soil_moisture_l2`      |
+| `total_precipitation`                                | `precipitation`         |
+| `potential_evaporation`                              | `et0_proxy`             |
+| `10m_u_component_of_wind`, `10m_v_component_of_wind` | `wind_speed`            |
+
+### Script cần tạo
+
+```text
+scripts/download_era5_land.py
+```
+
+### Input
+
+```text
+--zones metadata/zones.geojson
+--start-date 2024-01-01
+--end-date 2024-06-30
+--output-dir data/raw/era5_land
+--mode cdsapi
+```
+
+### Output
+
+```text
+data/raw/era5_land/
+├── era5_land_2024_01.nc
+├── era5_land_2024_02.nc
+├── ...
+└── era5_land_zone_hourly.parquet
+```
+
+### Logic tải bằng CDS API
+
+Codex agent cần implement:
+
+```python
+# scripts/download_era5_land.py
+
+import cdsapi
+import argparse
+from pathlib import Path
+
+ERA5_VARIABLES = [
+    "2m_temperature",
+    "2m_dewpoint_temperature",
+    "skin_temperature",
+    "volumetric_soil_water_layer_1",
+    "volumetric_soil_water_layer_2",
+    "total_precipitation",
+    "potential_evaporation",
+    "10m_u_component_of_wind",
+    "10m_v_component_of_wind",
+]
+
+def download_month(year, month, bbox, output_path):
+    """
+    bbox format for CDS:
+    [north, west, south, east]
+    """
+    client = cdsapi.Client()
+    client.retrieve(
+        "reanalysis-era5-land",
+        {
+            "variable": ERA5_VARIABLES,
+            "year": str(year),
+            "month": f"{month:02d}",
+            "day": [f"{d:02d}" for d in range(1, 32)],
+            "time": [f"{h:02d}:00" for h in range(24)],
+            "data_format": "netcdf",
+            "download_format": "unarchived",
+            "area": bbox,
+        },
+        str(output_path),
+    )
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--zones", required=True)
+    parser.add_argument("--start-date", required=True)
+    parser.add_argument("--end-date", required=True)
+    parser.add_argument("--output-dir", default="data/raw/era5_land")
+    args = parser.parse_args()
+
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    # TODO:
+    # 1. Load zones.geojson.
+    # 2. Compute bounding box [north, west, south, east].
+    # 3. Iterate months.
+    # 4. Download NetCDF.
+    # 5. Convert NetCDF to zone-level hourly parquet.
+
+if __name__ == "__main__":
+    main()
+```
+
+### Lệnh chạy
+
+```bash
+python scripts/download_era5_land.py \
+  --zones metadata/zones.geojson \
+  --start-date 2024-01-01 \
+  --end-date 2024-06-30 \
+  --output-dir data/raw/era5_land
+```
+
+### Biến môi trường cần có
+
+```bash
+# ~/.cdsapirc
+url: https://cds.climate.copernicus.eu/api
+key: <CDS_API_KEY>
+```
+
+### Hậu xử lý ERA5
+
+Codex agent cần tạo:
+
+```text
+scripts/process_era5_land.py
+```
+
+Output:
+
+```text
+data/interim/environment_hourly.parquet
+```
+
+Schema:
+
+```csv
+zone_id,timestamp,air_temp_c,dewpoint_c,relative_humidity,soil_moisture_l1,soil_moisture_l2,precipitation_mm,et0_proxy,wind_speed
+A01,2024-01-01T00:00:00Z,28.4,23.2,73.1,0.31,0.34,0.0,3.2,1.8
+```
+
+---
+
+## 2.3. CHIRPS — dữ liệu mưa daily
+
+### Nguồn
+
+Dùng **CHIRPS Daily** từ Climate Hazards Group hoặc GEE dataset:
+
+```text
+UCSB-CHG/CHIRPS/DAILY
+```
+
+CHIRPS là rainfall dataset quasi-global, từ 1981 tới gần hiện tại, độ phân giải 0.05°, dùng satellite và station data, phù hợp trend analysis và drought monitoring. ([Climate Hazards Center][4])
+
+### Biến cần tải
+
+| Band            | Đơn vị |
+| --------------- | ------ |
+| `precipitation` | mm/day |
+
+### Script cần tạo
+
+```text
+scripts/download_chirps_gee.py
+```
+
+### Input
+
+```text
+--zones metadata/zones.geojson
+--start-date 2024-01-01
+--end-date 2024-06-30
+--output-dir data/raw/chirps
+```
+
+### Output
+
+```text
+data/raw/chirps/
+├── chirps_daily_zone.parquet
+└── chirps_download_log.json
+```
+
+### Logic tải
+
+```python
+# scripts/download_chirps_gee.py
+
+import ee
+import argparse
+import pandas as pd
+from pathlib import Path
+
+def get_chirps_daily(zone_geom, zone_id, start_date, end_date):
+    collection = (
+        ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
+        .filterBounds(zone_geom)
+        .filterDate(start_date, end_date)
+        .select("precipitation")
+    )
+
+    # TODO:
+    # 1. Reduce each daily image over zone geometry.
+    # 2. Extract mean precipitation.
+    # 3. Return DataFrame: zone_id, date, precipitation_mm.
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--zones", required=True)
+    parser.add_argument("--start-date", required=True)
+    parser.add_argument("--end-date", required=True)
+    parser.add_argument("--output-dir", default="data/raw/chirps")
+    args = parser.parse_args()
+
+    ee.Initialize()
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    # TODO: load zones, loop, save parquet.
+
+if __name__ == "__main__":
+    main()
+```
+
+### Lệnh chạy
+
+```bash
+python scripts/download_chirps_gee.py \
+  --zones metadata/zones.geojson \
+  --start-date 2024-01-01 \
+  --end-date 2024-06-30 \
+  --output-dir data/raw/chirps
+```
+
+### Feature cần sinh thêm
+
+```text
+rain_1d
+rain_3d_sum
+rain_7d_sum
+dry_spell_days
+rain_anomaly_30d
+```
+
+---
+
+## 2.4. SMAP L3 — soil moisture daily
+
+### Nguồn
+
+Dùng **NASA SMAP Enhanced L3 Radiometer Global Daily 9 km EASE-Grid Soil Moisture**.
+
+Sản phẩm SMAP Enhanced L3 cung cấp daily estimates về điều kiện bề mặt đất và soil moisture toàn cầu, derived từ SMAP radiometer. ([National Snow and Ice Data Center][5])
+
+Có 2 cách tải:
+
+```text
+Option A: NASA Earthdata / NSIDC download
+Option B: Google Earth Engine nếu dùng collection có sẵn
+```
+
+GEE có collection SMAP `NASA/SMAP/SPL3SMP_E/005`, tuy nhiên bản này trong tài liệu GEE cũ có coverage đến 2023-12-03; nếu cần 2024–2025 nên ưu tiên NSIDC/NASA Earthdata hoặc kiểm tra collection mới. ([Google for Developers][6])
+
+### Biến cần tải
+
+| Variable            | Vai trò                           |
+| ------------------- | --------------------------------- |
+| soil moisture AM/PM | soil moisture proxy               |
+| quality flag        | lọc retrieval lỗi                 |
+| surface flag        | loại điểm băng/tuyết/water nếu có |
+
+### Script cần tạo
+
+```text
+scripts/download_smap.py
+```
+
+### Input
+
+```text
+--zones metadata/zones.geojson
+--start-date 2024-01-01
+--end-date 2024-06-30
+--output-dir data/raw/smap
+--provider nsidc
+```
+
+### Output
+
+```text
+data/raw/smap/
+├── smap_daily_zone.parquet
+├── smap_raw_files/
+└── smap_quality_report.csv
+```
+
+### Logic khuyến nghị
+
+Vì SMAP tải qua NASA Earthdata thường cần authentication, Codex agent nên hỗ trợ 2 mode:
+
+```text
+--provider gee
+--provider nsidc
+```
+
+### Pseudocode
+
+```python
+# scripts/download_smap.py
+
+import argparse
+from pathlib import Path
+
+def download_smap_from_gee(zones_path, start_date, end_date, output_dir):
+    """
+    Use GEE collection if date range is supported.
+    Dataset candidate:
+    NASA/SMAP/SPL3SMP_E/005
+    """
+    # TODO:
+    # 1. Initialize ee.
+    # 2. Load ImageCollection.
+    # 3. Filter date/bounds.
+    # 4. Reduce over each zone.
+    # 5. Save daily soil moisture parquet.
+
+def download_smap_from_nsidc(zones_path, start_date, end_date, output_dir):
+    """
+    Use NASA Earthdata/NSIDC.
+    Requires Earthdata credentials.
+    """
+    # TODO:
+    # 1. Read EARTHDATA_USERNAME and EARTHDATA_PASSWORD from env.
+    # 2. Query NSIDC granules by date/bbox.
+    # 3. Download HDF5 files.
+    # 4. Extract soil moisture and quality flags.
+    # 5. Spatially aggregate to zone centroid/bbox.
+    # 6. Save daily parquet.
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--zones", required=True)
+    parser.add_argument("--start-date", required=True)
+    parser.add_argument("--end-date", required=True)
+    parser.add_argument("--output-dir", default="data/raw/smap")
+    parser.add_argument("--provider", choices=["gee", "nsidc"], default="nsidc")
+    args = parser.parse_args()
+
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    if args.provider == "gee":
+        download_smap_from_gee(args.zones, args.start_date, args.end_date, args.output_dir)
+    else:
+        download_smap_from_nsidc(args.zones, args.start_date, args.end_date, args.output_dir)
+
+if __name__ == "__main__":
+    main()
+```
+
+### Biến môi trường
+
+```bash
+export EARTHDATA_USERNAME="<your_username>"
+export EARTHDATA_PASSWORD="<your_password>"
+```
+
+### QA
+
+```text
+- Có soil_moisture theo ngày cho từng zone
+- Missing daily rate < 25%
+- Quality flag hợp lệ
+- Soil moisture nằm trong range vật lý hợp lý: 0–0.6 m3/m3
+```
+
+---
+
+## 2.5. Open-Meteo — historical weather fallback
+
+### Nguồn
+
+Dùng **Open-Meteo Historical Weather API**.
+
+Open-Meteo Historical API cung cấp historical weather từ 1940, có hourly variables như temperature, relative humidity, precipitation, wind; từ 2017 trở đi dùng weather models độ phân giải 9km. ([Open Meteo][7])
+
+### Khi nào dùng?
+
+Dùng khi:
+
+```text
+- Cần tải nhanh weather theo lat/lon zone
+- ERA5-Land CDS API bị chậm
+- Cần fallback để kiểm tra chéo air_temp, rain, humidity
+```
+
+### Script cần tạo
+
+```text
+scripts/download_open_meteo.py
+```
+
+### Input
+
+```text
+--zone-registry metadata/zone_registry.csv
+--start-date 2024-01-01
+--end-date 2024-06-30
+--output-dir data/raw/open_meteo
+```
+
+### API URL mẫu
+
+```text
+https://archive-api.open-meteo.com/v1/archive
+```
+
+### Variables
+
+```text
+temperature_2m
+relative_humidity_2m
+dew_point_2m
+precipitation
+rain
+wind_speed_10m
+shortwave_radiation
+et0_fao_evapotranspiration
+```
+
+### Code skeleton
+
+```python
+# scripts/download_open_meteo.py
+
+import argparse
+import requests
+import pandas as pd
+from pathlib import Path
+
+OPEN_METEO_URL = "https://archive-api.open-meteo.com/v1/archive"
+
+HOURLY_VARS = [
+    "temperature_2m",
+    "relative_humidity_2m",
+    "dew_point_2m",
+    "precipitation",
+    "rain",
+    "wind_speed_10m",
+    "shortwave_radiation",
+    "et0_fao_evapotranspiration",
+]
+
+def fetch_open_meteo(lat, lon, start_date, end_date):
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "start_date": start_date,
+        "end_date": end_date,
+        "hourly": ",".join(HOURLY_VARS),
+        "timezone": "UTC",
+    }
+    response = requests.get(OPEN_METEO_URL, params=params, timeout=60)
+    response.raise_for_status()
+    data = response.json()
+
+    df = pd.DataFrame(data["hourly"])
+    df = df.rename(columns={"time": "timestamp"})
+    return df
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--zone-registry", required=True)
+    parser.add_argument("--start-date", required=True)
+    parser.add_argument("--end-date", required=True)
+    parser.add_argument("--output-dir", default="data/raw/open_meteo")
+    args = parser.parse_args()
+
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    zones = pd.read_csv(args.zone_registry)
+
+    frames = []
+    for _, row in zones.iterrows():
+        df = fetch_open_meteo(row["lat"], row["lon"], args.start_date, args.end_date)
+        df["zone_id"] = row["zone_id"]
+        frames.append(df)
+
+    out = pd.concat(frames, ignore_index=True)
+    out.to_parquet(Path(args.output_dir) / "open_meteo_hourly.parquet", index=False)
+
+if __name__ == "__main__":
+    main()
+```
+
+### Lệnh chạy
+
+```bash
+python scripts/download_open_meteo.py \
+  --zone-registry metadata/zone_registry.csv \
+  --start-date 2024-01-01 \
+  --end-date 2024-06-30 \
+  --output-dir data/raw/open_meteo
+```
+
+---
+
+# 3. Zone polygon và zone registry
+
+## 3.1. File bắt buộc
+
+Codex agent cần tạo template:
+
+```text
+metadata/zones.geojson
+metadata/zone_registry.csv
+```
+
+### `zone_registry.csv`
+
+```csv
+zone_id,province,crop_type,lat,lon,area_ha,start_date,end_date
+A01,An Giang,rice,10.521,105.125,2.4,2024-01-01,2024-06-30
+A02,Dong Thap,rice,10.643,105.638,3.1,2024-01-01,2024-06-30
+A03,Can Tho,rice,10.034,105.782,2.8,2024-01-01,2024-06-30
+```
+
+### `zones.geojson`
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "zone_id": "A01",
+        "crop_type": "rice",
+        "province": "An Giang"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [105.120, 10.520],
+            [105.130, 10.520],
+            [105.130, 10.530],
+            [105.120, 10.530],
+            [105.120, 10.520]
+          ]
+        ]
+      }
+    }
+  ]
+}
+```
+
+---
+
+# 4. File cấu hình nguồn dữ liệu
+
+Codex agent cần tạo:
+
+```text
+metadata/source_registry.yaml
+```
+
+Nội dung:
+
+```yaml
+project:
+  name: multimodal-agtech-water-stress
+  version: v0.1-real-public-data
+
+aoi:
+  country: Vietnam
+  region: Mekong Delta
+  crop_type: rice
+  zone_file: metadata/zones.geojson
+  zone_registry: metadata/zone_registry.csv
+
+date_range:
+  start_date: "2024-01-01"
+  end_date: "2024-06-30"
+
+sources:
+  sentinel2:
+    provider: google_earth_engine
+    collection: COPERNICUS/S2_SR_HARMONIZED
+    bands: [B2, B3, B4, B8, SCL]
+    derived: [NDVI]
+    cloud_threshold: 30
+    output: data/raw/sentinel2
+
+  era5_land:
+    provider: copernicus_cds
+    dataset: reanalysis-era5-land
+    temporal_resolution: hourly
+    variables:
+      - 2m_temperature
+      - 2m_dewpoint_temperature
+      - skin_temperature
+      - volumetric_soil_water_layer_1
+      - volumetric_soil_water_layer_2
+      - total_precipitation
+      - potential_evaporation
+      - 10m_u_component_of_wind
+      - 10m_v_component_of_wind
+    output: data/raw/era5_land
+
+  chirps:
+    provider: google_earth_engine
+    collection: UCSB-CHG/CHIRPS/DAILY
+    variable: precipitation
+    temporal_resolution: daily
+    output: data/raw/chirps
+
+  smap:
+    provider: nsidc
+    dataset: SPL3SMP_E
+    temporal_resolution: daily
+    spatial_resolution: 9km
+    variables:
+      - soil_moisture
+      - quality_flag
+    output: data/raw/smap
+
+  open_meteo:
+    provider: open_meteo_archive_api
+    endpoint: https://archive-api.open-meteo.com/v1/archive
+    fallback_for: [era5_land]
+    variables:
+      - temperature_2m
+      - relative_humidity_2m
+      - dew_point_2m
+      - precipitation
+      - rain
+      - wind_speed_10m
+      - shortwave_radiation
+      - et0_fao_evapotranspiration
+    output: data/raw/open_meteo
+```
+
+---
+
+# 5. Master script điều phối tải dữ liệu
+
+Codex agent cần tạo:
+
+```text
+scripts/run_data_collection.py
+```
+
+Mục tiêu: chạy toàn bộ pipeline theo `source_registry.yaml`.
+
+```python
+# scripts/run_data_collection.py
+
+import subprocess
+from pathlib import Path
+
+def run(cmd):
+    print(f"[RUN] {cmd}")
+    subprocess.run(cmd, shell=True, check=True)
+
+def main():
+    Path("data/raw").mkdir(parents=True, exist_ok=True)
+    Path("data/interim").mkdir(parents=True, exist_ok=True)
+    Path("data/reports").mkdir(parents=True, exist_ok=True)
+
+    run("""
+    python scripts/download_sentinel2_gee.py \
+      --zones metadata/zones.geojson \
+      --start-date 2024-01-01 \
+      --end-date 2024-06-30 \
+      --cloud-threshold 30 \
+      --output-dir data/raw/sentinel2
+    """)
+
+    run("""
+    python scripts/download_era5_land.py \
+      --zones metadata/zones.geojson \
+      --start-date 2024-01-01 \
+      --end-date 2024-06-30 \
+      --output-dir data/raw/era5_land
+    """)
+
+    run("""
+    python scripts/download_chirps_gee.py \
+      --zones metadata/zones.geojson \
+      --start-date 2024-01-01 \
+      --end-date 2024-06-30 \
+      --output-dir data/raw/chirps
+    """)
+
+    run("""
+    python scripts/download_smap.py \
+      --zones metadata/zones.geojson \
+      --start-date 2024-01-01 \
+      --end-date 2024-06-30 \
+      --output-dir data/raw/smap \
+      --provider nsidc
+    """)
+
+    run("""
+    python scripts/download_open_meteo.py \
+      --zone-registry metadata/zone_registry.csv \
+      --start-date 2024-01-01 \
+      --end-date 2024-06-30 \
+      --output-dir data/raw/open_meteo
+    """)
+
+    run("python scripts/build_data_coverage_report.py")
+
+if __name__ == "__main__":
+    main()
+```
+
+Lệnh chạy:
+
+```bash
+python scripts/run_data_collection.py
+```
+
+---
+
+# 6. Script kiểm tra coverage sau tải
+
+Codex agent cần tạo:
+
+```text
+scripts/build_data_coverage_report.py
+```
+
+Nhiệm vụ:
+
+```text
+1. Đếm số Sentinel-2 scene hợp lệ / zone.
+2. Tính cloud rate trung bình / zone.
+3. Kiểm tra hourly weather coverage.
+4. Kiểm tra daily rainfall coverage.
+5. Kiểm tra SMAP missing rate.
+6. Xuất coverage_report.csv và source_quality_report.md.
+```
+
+Schema output:
+
+```csv
+zone_id,s2_scene_count,s2_mean_cloud,era5_hourly_coverage,chirps_daily_coverage,smap_daily_coverage,open_meteo_hourly_coverage,status
+A01,24,0.18,0.99,1.00,0.86,1.00,PASS
+A02,19,0.23,0.99,1.00,0.82,1.00,WARN
+```
+
+Tiêu chí:
+
+```text
+PASS nếu:
+- s2_scene_count >= 20
+- s2_mean_cloud <= 0.30
+- era5_hourly_coverage >= 0.95
+- chirps_daily_coverage >= 0.95
+- smap_daily_coverage >= 0.75
+```
+
+---
+
+# 7. Requirements cho Codex agent tạo
+
+Codex agent cần tạo:
+
+```text
+requirements-data.txt
+```
+
+Nội dung:
+
+```txt
+earthengine-api
+geemap
+geopandas
+shapely
+rasterio
+rioxarray
+xarray
+netCDF4
+h5py
+cdsapi
+numpy
+pandas
+pyarrow
+requests
+tqdm
+pyyaml
+scikit-learn
+```
+
+Setup:
+
+```bash
+pip install -r requirements-data.txt
+```
+
+Auth cần chuẩn bị:
+
+```bash
+# Google Earth Engine
+earthengine authenticate
+
+# Copernicus CDS
+# Tạo ~/.cdsapirc
+
+# NASA Earthdata
+export EARTHDATA_USERNAME="<username>"
+export EARTHDATA_PASSWORD="<password>"
+```
+
+---
+
+# 8. Prompt hoàn chỉnh để ra lệnh cho Codex agent
+
+Bạn có thể copy nguyên khối này:
+
+```text
+Bạn là Senior Data Engineer cho dự án Multimodal AgTech Water Stress Detection.
+
+Hãy tạo pipeline Python thu thập dữ liệu public real-world cho model multimodal gồm Sentinel-2 RGB+NIR, ERA5-Land hourly, CHIRPS rainfall, SMAP soil moisture và Open-Meteo fallback.
+
+Yêu cầu triển khai:
+
+1. Tạo cấu trúc thư mục:
+data/raw/sentinel2
+data/raw/era5_land
+data/raw/chirps
+data/raw/smap
+data/raw/open_meteo
+data/interim
+metadata
+reports
+scripts
+
+2. Tạo file metadata/source_registry.yaml mô tả đầy đủ source:
+- Sentinel-2: Google Earth Engine collection COPERNICUS/S2_SR_HARMONIZED, bands B2,B3,B4,B8,SCL, derived NDVI, cloud_threshold=30.
+- ERA5-Land: Copernicus CDS dataset reanalysis-era5-land, hourly variables: 2m_temperature, 2m_dewpoint_temperature, skin_temperature, volumetric_soil_water_layer_1, volumetric_soil_water_layer_2, total_precipitation, potential_evaporation, 10m_u_component_of_wind, 10m_v_component_of_wind.
+- CHIRPS: GEE collection UCSB-CHG/CHIRPS/DAILY, band precipitation.
+- SMAP: NSIDC/NASA Earthdata SPL3SMP_E daily 9km soil moisture. Hỗ trợ mode provider=gee và provider=nsidc.
+- Open-Meteo: archive API endpoint https://archive-api.open-meteo.com/v1/archive với variables temperature_2m, relative_humidity_2m, dew_point_2m, precipitation, rain, wind_speed_10m, shortwave_radiation, et0_fao_evapotranspiration.
+
+3. Tạo template:
+metadata/zones.geojson
+metadata/zone_registry.csv
+
+4. Tạo các script:
+scripts/download_sentinel2_gee.py
+scripts/download_era5_land.py
+scripts/process_era5_land.py
+scripts/download_chirps_gee.py
+scripts/download_smap.py
+scripts/download_open_meteo.py
+scripts/build_data_coverage_report.py
+scripts/run_data_collection.py
+
+5. Mỗi script phải có argparse đầy đủ, logging rõ ràng, tạo output folder nếu chưa có, và lưu download_log.json.
+
+6. Sentinel-2:
+- Dùng earthengine-api.
+- Lọc theo zones.geojson, start_date, end_date.
+- Lọc CLOUDY_PIXEL_PERCENTAGE < 30.
+- Lấy B2,B3,B4,B8,SCL.
+- Tính NDVI = (B8-B4)/(B8+B4).
+- Cloud mask bằng SCL, loại cloud shadow, cloud medium/high probability, cirrus, snow.
+- Export mỗi scene theo zone thành patch .npy hoặc GeoTIFF.
+- Lưu metadata JSON gồm sample_id, zone_id, timestamp, source, cloud_rate, bands, ndvi_mean, patch_path.
+
+7. ERA5-Land:
+- Dùng cdsapi.
+- Tải NetCDF theo tháng cho bbox bao phủ zones.
+- Convert NetCDF sang zone-level hourly parquet.
+- Tính thêm relative_humidity từ temperature/dewpoint nếu cần.
+- Tính wind_speed từ u/v wind.
+- Output data/interim/environment_hourly.parquet.
+
+8. CHIRPS:
+- Dùng GEE collection UCSB-CHG/CHIRPS/DAILY.
+- Reduce precipitation mean theo từng zone mỗi ngày.
+- Tạo features rain_1d, rain_3d_sum, rain_7d_sum, dry_spell_days.
+- Output data/raw/chirps/chirps_daily_zone.parquet.
+
+9. SMAP:
+- Tạo 2 provider:
+  a) gee: dùng NASA/SMAP/SPL3SMP_E/005 nếu date range hỗ trợ.
+  b) nsidc: dùng Earthdata credentials từ env EARTHDATA_USERNAME và EARTHDATA_PASSWORD.
+- Extract soil_moisture và quality flags.
+- Aggregate theo zone.
+- Output data/raw/smap/smap_daily_zone.parquet và smap_quality_report.csv.
+
+10. Open-Meteo:
+- Dùng requests gọi archive API theo lat/lon trong zone_registry.csv.
+- Lưu hourly parquet.
+- Output data/raw/open_meteo/open_meteo_hourly.parquet.
+
+11. Coverage report:
+- Tạo reports/coverage_report.csv gồm:
+zone_id, s2_scene_count, s2_mean_cloud, era5_hourly_coverage, chirps_daily_coverage, smap_daily_coverage, open_meteo_hourly_coverage, status.
+- PASS nếu:
+s2_scene_count >= 20,
+s2_mean_cloud <= 0.30,
+era5_hourly_coverage >= 0.95,
+chirps_daily_coverage >= 0.95,
+smap_daily_coverage >= 0.75.
+- Tạo reports/source_quality_report.md tóm tắt nguồn nào đạt, nguồn nào fail, lý do.
+
+12. Tạo requirements-data.txt gồm:
+earthengine-api, geemap, geopandas, shapely, rasterio, rioxarray, xarray, netCDF4, h5py, cdsapi, numpy, pandas, pyarrow, requests, tqdm, pyyaml, scikit-learn.
+
+13. Tạo README_DATA_COLLECTION.md hướng dẫn:
+- Cài dependencies
+- Authenticate Google Earth Engine
+- Cấu hình ~/.cdsapirc cho CDS
+- Cấu hình EARTHDATA_USERNAME/EARTHDATA_PASSWORD
+- Chạy python scripts/run_data_collection.py
+- Đọc reports/coverage_report.csv
+
+Ưu tiên code chạy được, có error handling, có retry cơ bản cho API/network, và không hard-code absolute path.
+```
+
+---
+
+# 9. Gợi ý lệnh chạy cuối cùng
+
+Sau khi Codex agent tạo xong code:
+
+```bash
+pip install -r requirements-data.txt
+
+earthengine authenticate
+
+export EARTHDATA_USERNAME="<your_username>"
+export EARTHDATA_PASSWORD="<your_password>"
+
+python scripts/run_data_collection.py
+```
+
+Sau đó kiểm tra:
+
+```bash
+ls data/raw/sentinel2
+ls data/raw/era5_land
+ls data/raw/chirps
+ls data/raw/smap
+ls data/raw/open_meteo
+
+cat reports/source_quality_report.md
+python -c "import pandas as pd; print(pd.read_csv('reports/coverage_report.csv'))"
+```
+
+---
+
+Phần quan trọng nhất để Codex agent không làm lệch hướng là: **Sentinel-2 làm trục sample chính**, mọi nguồn khác phải được tải để align về `zone_id + timestamp`, sau đó mới tạo `[t0-48h, t0]` cho model.
+
+[1]: https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR_HARMONIZED?utm_source=chatgpt.com "Harmonized Sentinel-2 MSI: MultiSpectral Instrument ..."
+[2]: https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land?utm_source=chatgpt.com "ERA5-Land hourly data from 1950 to present"
+[3]: https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_HOURLY?utm_source=chatgpt.com "ERA5-Land Hourly - ECMWF Climate Reanalysis"
+[4]: https://www.chc.ucsb.edu/data/chirps?utm_source=chatgpt.com "CHIRPS: Rainfall Estimates from Rain Gauge and Satellite ..."
+[5]: https://nsidc.org/data/spl3smp_e/versions/3?utm_source=chatgpt.com "SMAP Enhanced L3 Radiometer Global Daily 9 km EASE ..."
+[6]: https://developers.google.com/earth-engine/datasets/catalog/NASA_SMAP_SPL3SMP_E_005?utm_source=chatgpt.com "SPL3SMP_E.005 SMAP L3 Radiometer Global Daily 9 km ..."
+[7]: https://open-meteo.com/en/docs/historical-weather-api?utm_source=chatgpt.com "️ Historical Weather API"
