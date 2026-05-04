@@ -1,0 +1,46 @@
+# ONNX I/O Contract: Multimodal Stress Model
+# Version: 1.0.0
+# Consumed by: ml_pipeline/export, backend/ai-serving, ai_system/mc_dropout_wrapper
+
+contract:
+  name: onnx_multimodal_stress_model
+  version: "1.0.0"
+
+inputs:
+  - name: image
+    dtype: float32
+    shape: [B, 4, 224, 224]
+  - name: sensor_seq
+    dtype: float32
+    shape: [B, 48, 8]
+  - name: weather_ctx
+    dtype: float32
+    shape: [B, 6]
+  - name: modality_mask
+    dtype: float32
+    shape: [B, 3]
+
+outputs:
+  - name: logits
+    dtype: float32
+    shape: [B, 1]
+    post_processing: "sigmoid for probability"
+  - name: attention_weights
+    dtype: float32
+    shape: [B, N]
+    N_note: "N=49 (48 sensor timesteps + 1 weather token)"
+
+dynamic_axes:
+  image: {0: batch_size}
+  sensor_seq: {0: batch_size}
+  weather_ctx: {0: batch_size}
+  modality_mask: {0: batch_size}
+  logits: {0: batch_size}
+  attention_weights: {0: batch_size}
+
+opset_version: 17
+model_size_budget_mb: 55
+inference_timeout_ms: 500
+mc_dropout:
+  passes: 10
+  timeout_fallback: "single-pass with degraded_mode=true"
