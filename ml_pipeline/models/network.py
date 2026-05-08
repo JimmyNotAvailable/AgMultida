@@ -84,12 +84,24 @@ class MultimodalStressNet(nn.Module):
         sensor_seq_emb, _, _ = self.temporal_encoder(sensor_seq)  # [B, 48, d_model]
         weather_emb = self.weather_encoder(weather_ctx)          # [B, 1, d_model]
 
-        img_emb, sensor_seq_emb, weather_emb = self.modality_dropout(
+        img_emb, sensor_seq_emb, weather_emb, effective_mask = self.modality_dropout(
             img_emb, sensor_seq_emb, weather_emb, modality_mask,
         )
 
         kv = torch.cat([sensor_seq_emb, weather_emb], dim=1)  # [B, 49, d_model]
-        attended, attn_weights = self.cross_attention(img_emb, kv)  # [B, d_model], [B, 49]
+        sensor_missing = effective_mask[:, 1:2].eq(0).expand(-1, sensor_seq_emb.size(1))
+        weather_missing = effective_mask[:, 2:3].eq(0)
+        key_padding_mask = torch.cat([sensor_missing, weather_missing], dim=1)
+        all_kv_missing = key_padding_mask.all(dim=1)
+        safe_key_padding_mask = key_padding_mask.clone()
+        safe_key_padding_mask[all_kv_missing, -1] = False
+        attended, attn_weights = self.cross_attention(
+            img_emb,
+            kv,
+            key_padding_mask=safe_key_padding_mask,
+        )  # [B, d_model], [B, 49]
+        attended = attended.masked_fill(all_kv_missing.unsqueeze(-1), 0.0)
+        attn_weights = attn_weights.masked_fill(key_padding_mask, 0.0)
 
         fused = torch.cat([
             img_emb.squeeze(1),   # [B, d_model]

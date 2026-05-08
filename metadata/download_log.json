@@ -1110,6 +1110,39 @@
       "status": "PASS",
       "timestamp_utc": "2026-05-04T09:43:28.600975+00:00",
       "writes_primary_data": true
+    },
+    {
+      "credential_policy": "public_stac",
+      "dry_run": false,
+      "message": "Found 13 scenes from aws_earth_search, latest=2026-04-29",
+      "output_dir": "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\sentinel2",
+      "script": "real_download_gee_free",
+      "source_id": "sentinel2_stac",
+      "status": "PASS",
+      "timestamp_utc": "2026-05-07T15:53:26.143346+00:00",
+      "writes_primary_data": true
+    },
+    {
+      "credential_policy": "direct_http",
+      "dry_run": false,
+      "message": "Downloaded 8 CHIRPS daily files, latest=2026-03-31",
+      "output_dir": "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps",
+      "script": "real_download_gee_free",
+      "source_id": "chirps_direct",
+      "status": "PASS",
+      "timestamp_utc": "2026-05-07T15:58:21.466191+00:00",
+      "writes_primary_data": true
+    },
+    {
+      "credential_policy": "none",
+      "dry_run": false,
+      "message": "Open-Meteo: 6/6 zones PASS, 0 FAIL",
+      "output_dir": "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo",
+      "script": "real_download_gee_free",
+      "source_id": "open_meteo",
+      "status": "PASS",
+      "timestamp_utc": "2026-05-07T15:58:25.857783+00:00",
+      "writes_primary_data": true
     }
   ],
   "notes": "Append-only download audit log. No credentials or secret material may be stored here.",

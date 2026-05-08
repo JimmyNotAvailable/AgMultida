@@ -1,0 +1,10 @@
+{
+  "cuda_available": false,
+  "device_count": 0,
+  "devices": [],
+  "torch_version": "2.11.0+cpu",
+  "pass": false,
+  "errors": [
+    "CUDA is not available."
+  ]
+}

@@ -30,6 +30,7 @@ ENV/
 # IDEs
 .vscode/
 .idea/
+.claude/
 
 # OS
 .DS_Store
@@ -43,3 +44,13 @@ checkpoints/
 *.onnx
 !ml_pipeline/export/*.onnx  # Keep exported models if specifically needed, but usually ignored
 !tests/fixtures/*.pt
+
+#data
+data/
+data/*
+data/**
+
+#logs
+logs/
+logs/*
+logs/**

@@ -57,7 +57,7 @@ class TestCheckpoint:
             ckpt_path = Path(tmpdir) / "model.pt"
             save_checkpoint(ckpt_path, model, optimizer, None, epoch=5, metrics={}, config={"foo": "bar"})
             
-            state = torch.load(ckpt_path, weights_only=False)
+            state = torch.load(ckpt_path, weights_only=True)
             assert "epoch" in state
             assert "metrics" in state
             assert "config" in state

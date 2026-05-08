@@ -29,7 +29,7 @@ class ModalityDropout(nn.Module):
         sensor_emb: torch.Tensor,
         weather_emb: torch.Tensor,
         modality_mask: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Apply modality dropout.
 
         Args:
@@ -39,14 +39,19 @@ class ModalityDropout(nn.Module):
             modality_mask: [B, 3] real availability flags.
 
         Returns:
-            Dropout-masked embeddings (training) or mask-applied embeddings (eval).
+            Dropout-masked embeddings and effective modality mask.
         """
+        modality_mask = modality_mask.to(device=image_emb.device, dtype=image_emb.dtype)
+
         if self.training:
-            device = image_emb.device
             drop_mask = torch.bernoulli(
-                torch.full((image_emb.size(0), 3), 1.0 - self.p, device=device)
+                torch.full(
+                    (image_emb.size(0), 3),
+                    1.0 - self.p,
+                    device=image_emb.device,
+                    dtype=image_emb.dtype,
+                )
             )
-            # Combine training dropout with real modality mask
             effective = drop_mask * modality_mask
         else:
             effective = modality_mask
@@ -54,7 +59,7 @@ class ModalityDropout(nn.Module):
         image_emb = image_emb * effective[:, 0:1].unsqueeze(-1)
         sensor_emb = sensor_emb * effective[:, 1:2].unsqueeze(-1)
         weather_emb = weather_emb * effective[:, 2:3].unsqueeze(-1)
-        return image_emb, sensor_emb, weather_emb
+        return image_emb, sensor_emb, weather_emb, effective
 
 
 class CrossAttentionFusion(nn.Module):
@@ -74,20 +79,26 @@ class CrossAttentionFusion(nn.Module):
         self,
         query: torch.Tensor,
         kv: torch.Tensor,
+        key_padding_mask: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Cross-attention forward.
 
         Args:
             query: [B, 1, d_model] image embedding.
             kv: [B, 49, d_model] concat(sensor_seq[48], weather[1]).
+            key_padding_mask: [B, 49] true for masked KV tokens.
 
         Returns:
             attended: [B, d_model] cross-attended output.
             attn_weights: [B, 49] attention weights for XAI.
         """
         attn_out, attn_weights = self.cross_attn(
-            query=query, key=kv, value=kv,
-            need_weights=True, average_attn_weights=True,
+            query=query,
+            key=kv,
+            value=kv,
+            key_padding_mask=key_padding_mask,
+            need_weights=True,
+            average_attn_weights=True,
         )
         attended = self.norm(attn_out.squeeze(1))  # [B, d_model]
         attn_w = attn_weights.squeeze(1)            # [B, 49]
@@ -95,7 +106,7 @@ class CrossAttentionFusion(nn.Module):
 
 
 class FusionHead(nn.Module):
-    """Final MLP head: concat(image, attn_sensor, attn_weather) -> logits."""
+    """Final MLP head: concat(image, attended context, weather) -> logits."""
 
     def __init__(self, d_model: int = 256, dropout: float = 0.3) -> None:
         super().__init__()
