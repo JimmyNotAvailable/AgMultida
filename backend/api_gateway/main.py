@@ -85,6 +85,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.state.ai_client = StubAIClient()
+app.state.decision_client = StubDecisionClient()
+app.state.gateway_mode = "stub"
 
 
 # ---------------------------------------------------------------------------

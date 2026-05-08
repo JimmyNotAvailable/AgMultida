@@ -1,44 +1,53 @@
-# Dataset Card
+# Dataset Card: Water Stress Phase 1
 
 ## Dataset Name
 
-Multimodal AgTech Water Stress Detection Dataset
+AgMultida Water Stress Proxy Dataset (`data/processed_real`)
 
-## Current Status
+## Intended Use
 
-Realtime-ready metadata scaffold only. No primary public-source data has been downloaded in Phase 1.
+Pipeline validation and first-pass training for rice water-stress detection and water-saving irrigation recommendation.
 
-## Intended Modalities
+## Status
 
-- Sentinel-2 RGB + NIR image patch: `[4, 224, 224]`
-- Environmental sequence: `[48, 8]`
-- Weather context: `[2..6]`
-- Proxy stress label: `[1]`
+- Canonical training root: `data/processed_real/`
+- Final manifest: `data/processed_real/sample_manifest.csv`
+- Historical expansion is expected to change sample counts over time.
+- Labels: continuous proxy stress label `[0, 1]`
+- Primary training metrics should be continuous (`loss`, `mae`, `rmse`); binary metrics are diagnostics only.
+
+## Modalities
+
+- Sentinel-2 RGB+NIR image patch: `[4, 224, 224]`
+- Weather-derived sensor sequence: `[48, 8]`
+- Weather context: `[6]`
 - Modality mask: `[3]`
+- Label: `[1]`
 
-## Traceability Requirements
+## Label Formula and Limitations
 
-Each final sample must include source trace metadata and SHA-256 checksums for auditable reproduction.
+Labels are proxy labels based on NDVI anomaly, ET deficit, rain relief, and heat penalty. They are not field-measured stress labels and should not be presented as agronomist-verified ground truth.
 
-## AOI and Provenance Caveat
+## Sensor Limitation
 
-The current AOI metadata targets rice zones in Vietnam's Mekong Delta: An Giang, Dong Thap, and Can Tho. The six polygons in `metadata/zones.geojson` are temporary validation polygons only. They are marked as `synthetic_test_polygon=true`, `purpose=pipeline_validation_only`, and `not_field_boundary=true`.
+`sensor_seq` is weather-derived proxy data, not telemetry from physical field devices. It is appropriate for Phase 1 pipeline validation but not for claims about field-sensor performance.
 
-These polygons are not audited field boundaries and must not be used as ground-truth farm geometry.
+## Geometry Limitation
 
-## Realtime Readiness
+Zones are synthetic validation polygons, not audited farm boundaries.
 
-The metadata supports two collection modes:
+## Training Claim Boundary
 
-- `historical_backfill`: `2024-01-01` to `2024-06-30`
-- `realtime_incremental`: scheduled at `06:00` in `Asia/Ho_Chi_Minh`, with `lookback_days=14`
+Safe claim: multimodal proxy-label regression pipeline for water-stress scoring and irrigation recommendation.
 
-Storage and source query timestamps use UTC ISO-8601. Local scheduling and `local_date` use `Asia/Ho_Chi_Minh`. Naive datetimes are not allowed.
+Unsafe claims:
 
-## Active Source Path
+- field-ready agronomic accuracy
+- rice blast detection
+- brown planthopper detection
+- nitrogen deficiency detection
+- physical sensor telemetry validation
 
-The current collection path is GEE-free. Sentinel-2 is planned through public STAC providers, CHIRPS through the Climate Hazards Center direct repository, and Open-Meteo through its Archive API. GEE adapters are disabled because the project/billing/auth flow is blocking progress.
+## Current Data Integrity Warning
 
-## Limitations
-
-This card will be generated from processed dataset artifacts in a later phase. Current content documents source and metadata readiness only.
+The manifests and `.npy` tensors must pass integrity checks before full training. Manifest loader now expects `source_status == PASS` and can optionally validate checksums. Run `scripts/check_data_integrity.py --data-dir data/processed_real` before VPS launch.
