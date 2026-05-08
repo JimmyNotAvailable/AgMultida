@@ -54,6 +54,26 @@ class TestOnnxExportDryRun:
         assert report["output_path"] == str(path)
         assert report["model_size_mb"] > 0
 
+    def test_export_retries_without_dynamo_for_older_torch(self, tmp_path):
+        model = MultimodalStressNet(pretrained_backbone=False)
+        path = tmp_path / "model.onnx"
+        real_export = torch.onnx.export
+        calls = []
+
+        def fake_export(*args, **kwargs):
+            calls.append(kwargs.copy())
+            if len(calls) == 1 and "dynamo" in kwargs:
+                raise TypeError("export() got an unexpected keyword argument 'dynamo'")
+            return real_export(*args, **kwargs)
+
+        with patch("ml_pipeline.export.export_onnx.torch.onnx.export", side_effect=fake_export):
+            report = export_onnx(model, str(path))
+
+        assert path.exists()
+        assert report["model_size_mb"] > 0
+        assert calls[0]["dynamo"] is False
+        assert "dynamo" not in calls[1]
+
     def test_verify_onnx_reports_names_shapes_and_batches(self, tmp_path):
         model = MultimodalStressNet(pretrained_backbone=False)
         path = tmp_path / "verify.onnx"

@@ -121,17 +121,22 @@ def export_onnx(
         "attention_weights": {0: "batch_size"},
     }
 
-    torch.onnx.export(
-        model,
-        dummy_args,
-        output_path,
-        input_names=list(INPUT_SPECS.keys()),
-        output_names=OUTPUT_NAMES,
-        dynamic_axes=dynamic_axes,
-        opset_version=opset,
-        dynamo=False,
-        do_constant_folding=True,
-    )
+    export_kwargs = {
+        "input_names": list(INPUT_SPECS.keys()),
+        "output_names": OUTPUT_NAMES,
+        "dynamic_axes": dynamic_axes,
+        "opset_version": opset,
+        "dynamo": False,
+        "do_constant_folding": True,
+    }
+
+    try:
+        torch.onnx.export(model, dummy_args, output_path, **export_kwargs)
+    except TypeError as error:
+        if "unexpected keyword argument 'dynamo'" not in str(error):
+            raise
+        export_kwargs.pop("dynamo")
+        torch.onnx.export(model, dummy_args, output_path, **export_kwargs)
 
     size_mb = _model_size_mb(output_path)
     logger.info("ONNX model exported to %s (%.2f MB)", output_path, size_mb)
