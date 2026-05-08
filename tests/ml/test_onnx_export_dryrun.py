@@ -6,6 +6,9 @@ Run: pytest tests/ml/test_onnx_export_dryrun.py -v
 """
 from __future__ import annotations
 
+import pickle
+from unittest.mock import patch
+
 import pytest
 import torch
 from torch.optim import AdamW
@@ -26,7 +29,6 @@ from ml_pipeline.training.train import save_checkpoint
 
 class TestOnnxExportDryRun:
     def test_dry_run_passes(self):
-        """Full dry-run: export -> reload -> verify shapes."""
         result = dry_run()
         assert result["all_checks_passed"] is True
         assert result["verified_batch_sizes"] == [1, 2, 4]
@@ -104,3 +106,50 @@ class TestOnnxExportDryRun:
 
         with pytest.raises(KeyError, match="model_state_dict"):
             load_model_checkpoint(model, str(checkpoint_path))
+
+    def test_load_model_checkpoint_raises_when_weights_only_fails_without_opt_in(self, tmp_path):
+        source_model = MultimodalStressNet(pretrained_backbone=False)
+        optimizer = AdamW(source_model.parameters(), lr=1e-3)
+        checkpoint_path = tmp_path / "wrapped_checkpoint.pt"
+        save_checkpoint(checkpoint_path, source_model, optimizer, None, epoch=5, metrics={"loss": 0.2})
+
+        real_torch_load = torch.load
+
+        def fake_torch_load(*args, **kwargs):
+            if kwargs.get("weights_only") is True:
+                raise pickle.UnpicklingError("weights only load failed")
+            return real_torch_load(*args, **kwargs)
+
+        loaded_model = MultimodalStressNet(pretrained_backbone=False)
+        with patch("ml_pipeline.export.export_onnx.torch.load", side_effect=fake_torch_load):
+            with pytest.raises(pickle.UnpicklingError, match="weights only load failed"):
+                load_model_checkpoint(loaded_model, str(checkpoint_path))
+
+    def test_load_model_checkpoint_falls_back_with_explicit_opt_in(self, tmp_path):
+        source_model = MultimodalStressNet(pretrained_backbone=False)
+        optimizer = AdamW(source_model.parameters(), lr=1e-3)
+        checkpoint_path = tmp_path / "wrapped_checkpoint.pt"
+        save_checkpoint(checkpoint_path, source_model, optimizer, None, epoch=5, metrics={"loss": 0.2})
+
+        observed_weights_only = []
+        real_torch_load = torch.load
+
+        def fake_torch_load(*args, **kwargs):
+            observed_weights_only.append(kwargs.get("weights_only"))
+            if kwargs.get("weights_only") is True:
+                raise pickle.UnpicklingError("weights only load failed")
+            return real_torch_load(*args, **kwargs)
+
+        loaded_model = MultimodalStressNet(pretrained_backbone=False)
+        with patch("ml_pipeline.export.export_onnx.torch.load", side_effect=fake_torch_load):
+            metadata = load_model_checkpoint(
+                loaded_model,
+                str(checkpoint_path),
+                allow_unsafe_checkpoint_load=True,
+            )
+
+        assert observed_weights_only == [True, False]
+        assert metadata["epoch"] == 5
+        assert metadata["metrics"] == {"loss": 0.2}
+        for source_param, loaded_param in zip(source_model.parameters(), loaded_model.parameters()):
+            assert torch.allclose(source_param, loaded_param)

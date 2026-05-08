@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import pickle
 import sys
 import tempfile
 import time
@@ -63,13 +64,23 @@ def load_model_checkpoint(
     model: torch.nn.Module,
     checkpoint_path: str | Path,
     device: torch.device | str = "cpu",
+    allow_unsafe_checkpoint_load: bool = False,
 ) -> dict[str, Any]:
     """Load weights from plain state dict or save_checkpoint wrapper.
 
     Returns checkpoint metadata when present. Expects wrapped checkpoints to use
     save_checkpoint's model_state_dict key.
     """
-    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
+    except pickle.UnpicklingError:
+        if not allow_unsafe_checkpoint_load:
+            raise
+        logger.warning(
+            "Using weights_only=False for trusted local checkpoint: %s",
+            checkpoint_path,
+        )
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
     if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
         state_dict = checkpoint["model_state_dict"]
@@ -235,6 +246,11 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Export dummy model and verify")
     parser.add_argument("--checkpoint", type=str, help="Path to model checkpoint")
     parser.add_argument("--output", type=str, default="model.onnx", help="Output ONNX path")
+    parser.add_argument(
+        "--allow-unsafe-checkpoint-load",
+        action="store_true",
+        help="Allow torch pickle fallback for trusted local checkpoints when weights_only loading fails",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -251,7 +267,11 @@ def main() -> None:
     from ml_pipeline.models.network import MultimodalStressNet
 
     model = MultimodalStressNet(pretrained_backbone=False)
-    load_model_checkpoint(model, args.checkpoint)
+    load_model_checkpoint(
+        model,
+        args.checkpoint,
+        allow_unsafe_checkpoint_load=args.allow_unsafe_checkpoint_load,
+    )
     export_report = export_onnx(model, args.output)
     verify_report = verify_onnx(args.output)
     logger.info("Model size: %.2f MB", export_report["model_size_mb"])
