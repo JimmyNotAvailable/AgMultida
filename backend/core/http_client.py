@@ -23,6 +23,6 @@ def create_http_client(
     timeout_s = timeout_ms / 1000.0
     return httpx.AsyncClient(
         base_url=base_url,
-        timeout=httpx.Timeout(timeout_s, connect=5.0),
+        timeout=httpx.Timeout(timeout_s, connect=timeout_s),
         headers={"Content-Type": "application/json"},
     )
