@@ -6,34 +6,62 @@ STUB: logic implemented per contract, Redis Stream + MQTT deferred to Batch 3+.
 """
 from __future__ import annotations
 
+import hmac
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from core.config import get_settings
 from core.schemas import (
     ConfidenceFlag,
+    HealthResponse,
     IrrigationDecision,
     RecAction,
     RecommendRequest,
 )
-from core.errors import AgTechError, mask_internal_exception
+from core.errors import AgTechError, ErrorCode, mask_internal_exception
 
 app = FastAPI(title="AgMultida Decision Engine", version="1.0.0")
+
+
+def require_internal_api_key(request: Request) -> None:
+    settings = get_settings()
+    expected_key = settings.INTERNAL_API_KEY
+    header_name = settings.INTERNAL_API_KEY_HEADER
+    provided_key = request.headers.get(header_name)
+    if not provided_key or not expected_key or not hmac.compare_digest(provided_key, expected_key):
+        raise AgTechError(
+            error_code=ErrorCode.AUTH_INVALID_API_KEY,
+            message='Invalid internal API key.',
+            details={'source_service': 'api_gateway'},
+            status_code=401,
+            trace_id=uuid4(),
+        )
+
+
+@app.get('/healthz', response_model=HealthResponse)
+async def healthz():
+    return HealthResponse()
+
+
+@app.get('/readyz')
+async def readyz() -> dict[str, str]:
+    return {'status': 'ok'}
 
 # Thresholds synced with contracts/decision_contract.yaml
 UNCERTAINTY_GATE = 0.30
 RAIN_OVERRIDE = 0.40
 CRITICAL_STRESS = 0.60
 CRITICAL_MOISTURE = 25.0
+DEGRADED_UNCERTAINTY_MULT = 1.3
 MODERATE_STRESS = 0.40
 MODERATE_MOISTURE = 30.0
 EARLY_WATCH = 0.25
-DEGRADED_UNCERTAINTY_MULT = 1.3
-
 VOLUME_MAP = {
     RecAction.NO_IRRIGATION: 0.0,
     RecAction.LIGHT: 5.0,
@@ -105,5 +133,6 @@ def _decision(
 
 
 @app.post("/internal/recommend", response_model=IrrigationDecision)
-async def internal_recommend(req: RecommendRequest):
+async def internal_recommend(req: RecommendRequest, request: Request):
+    require_internal_api_key(request)
     return evaluate_decision(req)

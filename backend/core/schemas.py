@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -156,14 +156,79 @@ class IrrigationCommandResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Zone Status
 # ---------------------------------------------------------------------------
+class AlertSummary(BaseModel):
+    alert_id: str
+    severity: str
+    source: str
+    message: str
+    acknowledged: bool = False
+    timestamp: datetime
+
+
+class AlertRecord(AlertSummary):
+    zone_id: str
+    rule_id: str
+
+
+class AlertFeedResponse(BaseModel):
+    trace_id: UUID = Field(default_factory=uuid4)
+    zone_id: str
+    alerts: list[AlertRecord] = Field(default_factory=list)
+
+
+class ImagerySummary(BaseModel):
+    scene_id: Optional[str] = None
+    acquisition_time: Optional[datetime] = None
+    cloud_cover: Optional[float] = None
+    rgb_url: Optional[str] = None
+    ndvi_url: Optional[str] = None
+    stale: bool = True
+
+
+class ImageryScene(ImagerySummary):
+    zone_id: str
+    source: str = "earth-search"
+
+
+class ImagerySceneCollection(BaseModel):
+    trace_id: UUID = Field(default_factory=uuid4)
+    zone_id: str
+    scenes: list[ImageryScene] = Field(default_factory=list)
+
+
 class ZoneStatusResponse(BaseModel):
     trace_id: UUID = Field(default_factory=uuid4)
     zone_id: str
     latest_prediction: Optional[PredictResponse] = None
     latest_decision: Optional[IrrigationDecision] = None
-    latest_telemetry: Optional[TelemetryIngestResponse] = None
+    latest_telemetry: Optional[dict[str, Any]] = None
+    weather: Optional[dict[str, Any]] = None
+    imagery: Optional[ImagerySummary] = None
+    alerts: list[AlertSummary] = Field(default_factory=list)
     command_state: Optional[CommandStatus] = None
     updated_at: datetime
+
+
+class ZoneRegistryEntry(BaseModel):
+    zone_id: str
+    zone_name: str
+    province: str
+    crop_type: str
+    split: str
+    local_timezone: str
+
+
+class ZoneListItemResponse(BaseModel):
+    zone: ZoneRegistryEntry
+    command_state: Optional[CommandStatus] = None
+    confidence_flag: Optional[ConfidenceFlag] = None
+    degraded_mode: Optional[bool] = None
+    updated_at: datetime
+
+
+class ZoneListResponse(BaseModel):
+    trace_id: UUID = Field(default_factory=uuid4)
+    zones: list[ZoneListItemResponse]
 
 
 # ---------------------------------------------------------------------------
