@@ -1,72 +1,69 @@
 {
   "verdict": "RAW_DATA_READY",
-  "timestamp_utc": "2026-05-04T09:43:28.608035+00:00",
+  "timestamp_utc": "2026-05-07T15:58:25.859786+00:00",
   "sources": {
     "sentinel2_stac": {
       "status": "PASS",
       "message": "Found 13 scenes from aws_earth_search, latest=2026-04-29",
       "provider": "aws_earth_search",
       "files": [
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/sentinel2/sentinel2_stac_catalog.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/sentinel2/sentinel2_scene_index.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/sentinel2/sentinel2_sample_asset_check.json"
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\sentinel2\\sentinel2_stac_catalog.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\sentinel2\\sentinel2_scene_index.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\sentinel2\\sentinel2_sample_asset_check.json"
       ],
       "items_count": 13,
       "latest_available_date": "2026-04-29",
       "checksums": {
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/sentinel2/sentinel2_stac_catalog.json": "89e307f1759ce24f367f4ee802758a71562dcb274f6851bd2a6303b101d0294c",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/sentinel2/sentinel2_scene_index.csv": "b216ce45c31b8a3745adee4c57f00b3f59fee7bbfaceec40ec3ee70e09ad0add",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/sentinel2/sentinel2_sample_asset_check.json": "a4a15e8c250ddc56b7ea4aad4b76712beefefc10eace13eb4dc2894997da10c8"
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\sentinel2\\sentinel2_stac_catalog.json": "1fac8725015c0fc3ad31400e643ae47ece087b126f24f53ec62caee35fd651e1",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\sentinel2\\sentinel2_scene_index.csv": "fa49a02dfefdbf344d1a199f57f6f3633310bbe0cff92328bf662ec3f628995f",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\sentinel2\\sentinel2_sample_asset_check.json": "39f61015e3d0fe0b804fbd914de1bedc34d4b1e2f8e2ef67cf4c19ed5d3a40f3"
       }
     },
     "chirps_direct": {
       "status": "PASS",
-      "message": "Downloaded 11 CHIRPS daily files, latest=2026-03-31",
+      "message": "Downloaded 8 CHIRPS daily files, latest=2026-03-31",
       "files": [
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps_download_manifest.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.31.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.30.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.29.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.28.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.27.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.26.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.25.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.24.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.23.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.22.tif.gz",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps-v2.0.2026.03.21.tif.gz"
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps_download_manifest.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.31.tif.gz",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.30.tif.gz",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.29.tif.gz",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.28.tif.gz",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.27.tif.gz",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.26.tif.gz",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.25.tif.gz",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps-v2.0.2026.03.24.tif.gz"
       ],
-      "files_downloaded_count": 11,
-      "files_failed_count": 34,
+      "files_downloaded_count": 8,
+      "files_failed_count": 37,
       "latest_available_date": "2026-03-31",
       "checksums": {
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/chirps/chirps_download_manifest.json": "0ff0a7c733c0fd7b1ba7948cd83aef12dfe262a2d130e992b5061b6c64401f0f"
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\chirps\\chirps_download_manifest.json": "f43df63b9a86973082ebce8fb3008ecf8407c68b9102745b9b9c70d69a34ca68"
       }
     },
     "open_meteo": {
       "status": "PASS",
       "message": "Open-Meteo: 6/6 zones PASS, 0 FAIL",
       "files": [
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A01.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A01.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A02.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A02.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A03.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_A03.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_D01.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_D01.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_E01.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_E01.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_F01.json",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_F01.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_combined.csv",
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_download_manifest.json"
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_A01.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_A01.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_A02.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_A02.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_A03.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_A03.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_D01.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_D01.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_E01.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_E01.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_F01.json",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_F01.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_combined.csv",
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_download_manifest.json"
       ],
       "zones_pass": 6,
       "zones_fail": 0,
-      "latest_available_date": "2026-05-04",
+      "latest_available_date": "2026-05-07",
       "checksums": {
-        "/opt/Myprojects/ML2/MachineLearning2/Multimodal_AgTech/data/raw/open_meteo/open_meteo_download_manifest.json": "2cf48f06b3ad9c21b12d96103c8e8e88d33db5224da0953e3e05ef20280476a8"
+        "E:\\ProjectOnPC\\MyProject\\AgMultida\\data\\raw\\open_meteo\\open_meteo_download_manifest.json": "feef54d688bc4bfd916f1d061e93d345cd7f8b420383ce39e72b778e4e336d60"
       }
     }
   }

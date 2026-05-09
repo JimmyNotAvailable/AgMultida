@@ -39,17 +39,16 @@ fusion:
   dropout: 0.1
 
 head:
-  dims: [768, 256, 1]  # concat(img, attn_sensor, attn_weather) -> logits
+  dims: [768, 256, 1]  # concat(image, attended context, weather) -> logits
   dropout: 0.3
-  output: raw_logits  # sigmoid applied only at inference
+  output: raw_logits  # probability transform happens in loss, metrics, or inference
 
 regularization:
   modality_dropout: 0.3
   label_smoothing: 0.1
 
 training:
-  loss: bce_with_logits
-  pos_weight: 1.5
+  loss: proxy_mse
   optimizer: adamw
   lr: 3.0e-4
   weight_decay: 1.0e-4

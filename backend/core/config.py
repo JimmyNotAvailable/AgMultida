@@ -35,6 +35,30 @@ class Settings:
     AI_SERVING_TIMEOUT_MS: int = field(
         default_factory=lambda: int(os.getenv("AI_SERVING_TIMEOUT_MS", "500")),
     )
+    AI_SERVING_MODE: str = field(
+        default_factory=lambda: os.getenv("AI_SERVING_MODE", "manifest"),
+    )
+    ONNX_MODEL_PATH: str = field(
+        default_factory=lambda: os.getenv("ONNX_MODEL_PATH", "artifacts/model.onnx"),
+    )
+    CALIBRATOR_PATH: str = field(
+        default_factory=lambda: os.getenv("CALIBRATOR_PATH", "artifacts/calibrator.json"),
+    )
+    MANIFEST_PATH: str = field(
+        default_factory=lambda: os.getenv("MANIFEST_PATH", "data/processed_real/sample_manifest.csv"),
+    )
+    MODEL_VERSION: str = field(
+        default_factory=lambda: os.getenv("MODEL_VERSION", "v1.0.0"),
+    )
+    INTERNAL_API_KEY: str = field(
+        default_factory=lambda: os.getenv("INTERNAL_API_KEY", ""),
+    )
+    INTERNAL_API_KEY_HEADER: str = field(
+        default_factory=lambda: os.getenv("INTERNAL_API_KEY_HEADER", "X-Internal-API-Key"),
+    )
+    AI_SERVING_STRICT_READY: bool = field(
+        default_factory=lambda: os.getenv("AI_SERVING_STRICT_READY", "false").lower() == "true",
+    )
 
     def __post_init__(self) -> None:
         if not self.JWT_SECRET:

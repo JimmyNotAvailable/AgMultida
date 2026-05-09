@@ -2,12 +2,15 @@
 # Model architecture and hyperparams are in model.yaml
 
 training:
-  data_dir: "data/processed/"
+  data_dir: "data/processed_real/"
   checkpoint_dir: "checkpoints/"
   device: "auto"  # 'cuda', 'cpu', or 'auto'
   dry_run: false
   dry_run_samples: 4
   log_interval: 10
+  checkpoint_metric: "rmse"
+  evaluate_test_manifest: true
+  validate_checksums: false
   
   # Optional overrides for hyperparams in model.yaml during specific runs
   # epochs: 50
