@@ -18,6 +18,9 @@ import os
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
+
+import httpx
 
 import pytest
 
@@ -28,7 +31,9 @@ os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 from fastapi.testclient import TestClient
 
 from api_gateway.main import app
-from api_gateway.clients.ai_client import AIClient, StubAIClient
+from tests.backend.auth_helpers import auth_headers
+from api_gateway.clients.ai_client import AIClient, LiveAIClient, StubAIClient
+from core.config import get_settings
 from api_gateway.clients.decision_client import (
     DecisionClient,
     LiveDecisionClient,
@@ -70,7 +75,7 @@ class TestStubModeBackwardCompat:
 
     def test_predict_with_stub_client(self):
         with TestClient(app) as client:
-            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD)
+            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD, headers=auth_headers('operator'))
             assert resp.status_code == 200
             data = resp.json()
             parsed = PredictResponse(**data)
@@ -81,7 +86,7 @@ class TestStubModeBackwardCompat:
 
     def test_recommend_with_stub_client(self):
         with TestClient(app) as client:
-            resp = client.post("/v1/recommend", json=VALID_RECOMMEND_PAYLOAD)
+            resp = client.post("/v1/recommend", json=VALID_RECOMMEND_PAYLOAD, headers=auth_headers('operator'))
             assert resp.status_code == 200
             parsed = IrrigationDecision(**resp.json())
             assert parsed.action == RecAction.LIGHT
@@ -89,12 +94,12 @@ class TestStubModeBackwardCompat:
 
     def test_predict_response_has_trace_id(self):
         with TestClient(app) as client:
-            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD)
+            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD, headers=auth_headers('operator'))
             assert "trace_id" in resp.json()
 
     def test_recommend_response_has_trace_id(self):
         with TestClient(app) as client:
-            resp = client.post("/v1/recommend", json=VALID_RECOMMEND_PAYLOAD)
+            resp = client.post("/v1/recommend", json=VALID_RECOMMEND_PAYLOAD, headers=auth_headers('operator'))
             assert "trace_id" in resp.json()
 
 
@@ -173,7 +178,7 @@ class TestWiredPredictPath:
 
         with TestClient(app) as client:
             app.state.ai_client = MockAIClient()
-            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD)
+            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD, headers=auth_headers('operator'))
             assert resp.status_code == 200
             assert resp.json()["stress_prob"] == 0.99
             assert resp.json()["model_version"] == "v-custom-mock"
@@ -192,7 +197,7 @@ class TestWiredPredictPath:
 
         with TestClient(app) as client:
             app.state.ai_client = TimeoutAIClient()
-            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD)
+            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD, headers=auth_headers('operator'))
             assert resp.status_code == 504
             body = resp.json()
             assert body["error_code"] == "INFERENCE_TIMEOUT"
@@ -207,7 +212,7 @@ class TestWiredPredictPath:
 
         with TestClient(app, raise_server_exceptions=False) as client:
             app.state.ai_client = CrashingAIClient()
-            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD)
+            resp = client.post("/v1/predict", json=VALID_PREDICT_PAYLOAD, headers=auth_headers('operator'))
             assert resp.status_code == 500
             body = resp.json()
             assert body["error_code"] == "INTERNAL_ERROR"
@@ -224,7 +229,7 @@ class TestWiredRecommendPath:
         """LiveDecisionClient wired through endpoint returns correct action."""
         with TestClient(app) as client:
             app.state.decision_client = LiveDecisionClient()
-            resp = client.post("/v1/recommend", json=VALID_RECOMMEND_PAYLOAD)
+            resp = client.post("/v1/recommend", json=VALID_RECOMMEND_PAYLOAD, headers=auth_headers('operator'))
             assert resp.status_code == 200
             parsed = IrrigationDecision(**resp.json())
             assert parsed.action == RecAction.HEAVY
@@ -242,7 +247,7 @@ class TestWiredRecommendPath:
                 "soil_moisture": 22.0,
                 "rain_forecast_3h": 0.1,
             }
-            resp = client.post("/v1/recommend", json=payload)
+            resp = client.post("/v1/recommend", json=payload, headers=auth_headers('operator'))
             assert resp.status_code == 200
             parsed = IrrigationDecision(**resp.json())
             assert parsed.action == RecAction.HOLD
@@ -270,6 +275,7 @@ class TestReadinessAndHealth:
             assert data["mode"] == "stub"
             assert data["dependencies"]["ai_serving"]["status"] == "stub"
             assert data["dependencies"]["decision_engine"]["status"] == "stub"
+            assert data["dependencies"]["ai_serving"]["checked_at"]
 
     def test_readyz_has_dependency_map(self):
         with TestClient(app) as client:
@@ -277,3 +283,165 @@ class TestReadinessAndHealth:
             data = resp.json()
             assert "ai_serving" in data["dependencies"]
             assert "decision_engine" in data["dependencies"]
+
+    def test_live_lifespan_wires_live_clients(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.setenv("INTERNAL_API_KEY", "secret-key-123456")
+        get_settings.cache_clear()
+        with TestClient(app):
+            assert app.state.gateway_mode == "live"
+            assert isinstance(app.state.ai_client, LiveAIClient)
+            assert isinstance(app.state.decision_client, LiveDecisionClient)
+            assert app.state.ai_client._internal_headers == {"X-Internal-API-Key": "secret-key-123456"}
+        get_settings.cache_clear()
+
+    def test_live_lifespan_requires_internal_api_key(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.delenv("INTERNAL_API_KEY", raising=False)
+        get_settings.cache_clear()
+        with pytest.raises(RuntimeError, match="INTERNAL_API_KEY must be set"):
+            with TestClient(app):
+                pass
+        get_settings.cache_clear()
+
+    def test_stub_lifespan_allows_missing_internal_api_key(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "stub")
+        monkeypatch.delenv("INTERNAL_API_KEY", raising=False)
+        get_settings.cache_clear()
+        with TestClient(app):
+            assert app.state.gateway_mode == "stub"
+        get_settings.cache_clear()
+
+    def test_live_lifespan_wires_custom_internal_header(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.setenv("INTERNAL_API_KEY", "secret-key-123456")
+        monkeypatch.setenv("INTERNAL_API_KEY_HEADER", "X-Service-Auth")
+        get_settings.cache_clear()
+        with TestClient(app):
+            assert app.state.ai_client._internal_headers == {"X-Service-Auth": "secret-key-123456"}
+        get_settings.cache_clear()
+
+    def test_readyz_live_mode_does_not_expose_ai_serving_url(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.setenv("INTERNAL_API_KEY", "secret-key-123456")
+        get_settings.cache_clear()
+        with TestClient(app) as client:
+            async def fake_ready():
+                return {
+                    "status": "ok",
+                    "model_loaded": True,
+                    "manifest_loaded": True,
+                    "upstream_last_error": None,
+                }
+
+            app.state.ai_client = SimpleNamespace(ready=fake_ready)
+            app.state.gateway_mode = "live"
+            resp = client.get("/v1/readyz")
+            data = resp.json()
+            assert "url" not in data["dependencies"]["ai_serving"]
+        get_settings.cache_clear()
+
+    def test_readyz_stub_mode_keeps_stub_shape(self):
+        with TestClient(app) as client:
+            resp = client.get("/v1/readyz")
+            data = resp.json()
+            assert data["dependencies"]["ai_serving"]["status"] == "stub"
+            assert "url" not in data["dependencies"]["ai_serving"]
+            assert data["dependencies"]["ai_serving"]["checked_at"]
+
+    def test_readyz_live_mode_uses_public_ready_method(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.setenv("INTERNAL_API_KEY", "secret-key-123456")
+        get_settings.cache_clear()
+        with TestClient(app) as client:
+            async def fake_ready():
+                return {
+                    "status": "ok",
+                    "model_loaded": True,
+                    "manifest_loaded": True,
+                    "upstream_last_error": None,
+                }
+
+            app.state.ai_client = SimpleNamespace(ready=fake_ready)
+            app.state.gateway_mode = "live"
+            resp = client.get("/v1/readyz")
+            assert resp.status_code == 200
+            assert resp.json()["status"] == "ok"
+        get_settings.cache_clear()
+
+    def test_readyz_live_mode_uses_public_ready_failure(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.setenv("INTERNAL_API_KEY", "secret-key-123456")
+        get_settings.cache_clear()
+        with TestClient(app) as client:
+            async def fake_ready():
+                return {
+                    "status": "degraded",
+                    "model_loaded": None,
+                    "manifest_loaded": None,
+                    "upstream_last_error": "AI serving readiness probe failed",
+                }
+
+            app.state.ai_client = SimpleNamespace(ready=fake_ready)
+            app.state.gateway_mode = "live"
+            resp = client.get("/v1/readyz")
+            assert resp.status_code == 200
+            assert resp.json()["status"] == "degraded"
+        get_settings.cache_clear()
+
+    def test_readyz_live_mode_upstream_ready(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.setenv("INTERNAL_API_KEY", "secret-key-123456")
+        get_settings.cache_clear()
+        with TestClient(app) as client:
+            async def fake_ready():
+                return {
+                    "status": "ok",
+                    "model_loaded": True,
+                    "manifest_loaded": True,
+                    "upstream_last_error": None,
+                }
+
+            app.state.ai_client = SimpleNamespace(ready=fake_ready)
+            app.state.gateway_mode = "live"
+            resp = client.get("/v1/readyz")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "ok"
+            assert data["dependencies"]["ai_serving"]["status"] == "ok"
+            assert data["dependencies"]["ai_serving"]["model_loaded"] is True
+            assert data["dependencies"]["ai_serving"]["manifest_loaded"] is True
+            assert data["dependencies"]["ai_serving"]["checked_at"]
+        get_settings.cache_clear()
+
+    def test_readyz_live_mode_upstream_failure(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("GATEWAY_MODE", "live")
+        monkeypatch.setenv("AI_SERVING_URL", "http://ai-serving.test")
+        monkeypatch.setenv("INTERNAL_API_KEY", "secret-key-123456")
+        get_settings.cache_clear()
+        with TestClient(app) as client:
+            async def fake_ready():
+                return {
+                    "status": "degraded",
+                    "model_loaded": None,
+                    "manifest_loaded": None,
+                    "upstream_last_error": "AI serving readiness probe failed",
+                }
+
+            app.state.ai_client = SimpleNamespace(ready=fake_ready)
+            app.state.gateway_mode = "live"
+            resp = client.get("/v1/readyz")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "degraded"
+            assert data["dependencies"]["ai_serving"]["status"] == "degraded"
+            assert data["dependencies"]["ai_serving"]["upstream_last_error"] == "Dependency unavailable"
+            assert data["dependencies"]["ai_serving"]["checked_at"]
+        get_settings.cache_clear()
