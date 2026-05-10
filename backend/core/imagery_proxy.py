@@ -4,6 +4,7 @@ import hashlib
 import io
 import ipaddress
 import math
+import os
 import socket
 import struct
 import zlib
@@ -55,12 +56,14 @@ async def build_preview_png(scene: ImageryScene, bbox: tuple[float, float, float
     if cached is not None:
         return PreviewImage(content=cached, cache_key=cache_key, generated_from_source=True)
 
+    if not preview_renderer_available():
+        return create_placeholder_preview(scene, bbox, mode, cache_key)
+
     try:
         source_url = resolve_preview_source(scene, mode)
         if source_url is None:
             return create_placeholder_preview(scene, bbox, mode, cache_key)
-        cog_bytes = await fetch_cog_bytes(source_url)
-        png = render_cog_preview(cog_bytes, bbox, mode)
+        png = await render_remote_cog_preview(source_url, bbox, mode)
     except Exception:
         return create_placeholder_preview(scene, bbox, mode, cache_key)
 
@@ -103,18 +106,38 @@ def resolve_preview_source(scene: ImageryScene, mode: str) -> str | None:
     return source_url
 
 
-def render_cog_preview(cog_bytes: bytes, bbox: tuple[float, float, float, float], mode: str) -> bytes:
+def preview_renderer_available() -> bool:
     try:
-        import numpy as np
-        import rasterio
-        from PIL import Image
-        from rasterio.io import MemoryFile
-        from rasterio.windows import from_bounds
+        import numpy  # noqa: F401
+        import rasterio  # noqa: F401
+        import PIL  # noqa: F401
     except ImportError:
-        return placeholder_png('zone', mode)
+        return False
+    return True
 
-    with MemoryFile(cog_bytes) as memory_file:
-        with memory_file.open() as dataset:
+
+async def render_remote_cog_preview(source_url: str, bbox: tuple[float, float, float, float], mode: str) -> bytes:
+    import asyncio
+
+    return await asyncio.to_thread(render_cog_preview, source_url, bbox, mode)
+
+
+def render_cog_preview(source_url: str, bbox: tuple[float, float, float, float], mode: str) -> bytes:
+    import numpy as np
+    import rasterio
+    from PIL import Image
+    from rasterio.session import AWSSession
+    from rasterio.windows import from_bounds
+
+    env_options = {
+        'GDAL_DISABLE_READDIR_ON_OPEN': 'EMPTY_DIR',
+        'CPL_VSIL_CURL_ALLOWED_EXTENSIONS': '.tif,.tiff',
+        'GDAL_HTTP_TIMEOUT': str(int(FETCH_TIMEOUT_SECONDS)),
+    }
+
+    aws_session = AWSSession(aws_unsigned=True)
+    with rasterio.Env(session=aws_session, **env_options):
+        with rasterio.open(source_url) as dataset:
             window = from_bounds(*bbox, transform=dataset.transform).round_offsets().round_lengths()
             if window.width <= 0 or window.height <= 0:
                 window = None

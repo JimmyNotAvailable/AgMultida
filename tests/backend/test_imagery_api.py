@@ -14,6 +14,7 @@ os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
 from api_gateway import main
 from api_gateway.main import app
 from core.imagery_proxy import build_preview_png, clear_preview_cache
+import core.imagery_proxy as imagery_proxy
 from core.schemas import ImageryScene, ImagerySceneCollection
 from tests.backend.auth_helpers import auth_headers
 
@@ -145,6 +146,33 @@ async def test_build_preview_png_falls_back_to_placeholder_for_unsafe_source():
         source='sentinel-2-l2a',
         stale=False,
     )
+
+    preview = await build_preview_png(scene, (105.0, 10.0, 106.0, 11.0), 'rgb')
+
+    assert preview.generated_from_source is False
+    assert preview.content.startswith(b'\x89PNG\r\n\x1a\n')
+
+
+@pytest.mark.anyio
+async def test_build_preview_png_skips_network_when_renderer_unavailable(monkeypatch):
+    clear_preview_cache()
+    scene = ImageryScene(
+        zone_id='A02',
+        scene_id='S2C_48PWS_20260325_0_L2A',
+        acquisition_time=datetime(2026, 3, 25, tzinfo=timezone.utc),
+        cloud_cover=4.2,
+        rgb_url='https://sentinel-cogs.s3.us-west-2.amazonaws.com/example.tif',
+        ndvi_url=None,
+        source='sentinel-2-l2a',
+        stale=False,
+    )
+
+    monkeypatch.setattr(imagery_proxy, 'preview_renderer_available', lambda: False)
+
+    async def fail_render(source_url: str, bbox: tuple[float, float, float, float], mode: str) -> bytes:
+        raise AssertionError('remote render should be skipped when renderer unavailable')
+
+    monkeypatch.setattr(imagery_proxy, 'render_remote_cog_preview', fail_render)
 
     preview = await build_preview_png(scene, (105.0, 10.0, 106.0, 11.0), 'rgb')
 
