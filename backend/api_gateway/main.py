@@ -33,6 +33,8 @@ from features.prediction.cache import PredictionCacheService
 from features.prediction.service import PredictionService
 from features.recommendation.router import router as recommendation_router
 from features.recommendation.service import DecisionCacheService, RecommendationService
+from features.alerts.router import router as alerts_router
+from features.alerts.service import AlertService
 from features.zones.registry import ZoneRegistryService
 from features.zones.router import router as zones_router
 from features.zones.status_service import ZoneStatusService
@@ -153,7 +155,8 @@ async def lifespan(application: FastAPI):
     application.state.prediction_cache = build_prediction_cache_service()
     application.state.prediction_service = PredictionService(application.state.prediction_cache)
     application.state.decision_cache = DecisionCacheService(application.state.prediction_cache._redis_client)
-    application.state.recommendation_service = RecommendationService(application.state.prediction_cache, application.state.decision_cache)
+    application.state.alert_service = AlertService(application.state.prediction_cache._redis_client)
+    application.state.recommendation_service = RecommendationService(application.state.prediction_cache, application.state.decision_cache, application.state.alert_service)
     application.state.zone_status_aggregate = ZoneStatusService(application.state.prediction_cache, application.state.decision_cache, application.state.prediction_cache._redis_client)
     application.state.command_safety_service = CommandSafetyService(application.state.prediction_cache, settings)
     application.state.alert_repository = AlertRepository()
@@ -185,7 +188,8 @@ app.state.zone_registry_service = ZoneRegistryService(ZONE_REGISTRY_PATH, ZONE_G
 app.state.prediction_cache = PredictionCacheService()
 app.state.prediction_service = PredictionService(app.state.prediction_cache)
 app.state.decision_cache = DecisionCacheService()
-app.state.recommendation_service = RecommendationService(app.state.prediction_cache, app.state.decision_cache)
+app.state.alert_service = AlertService()
+app.state.recommendation_service = RecommendationService(app.state.prediction_cache, app.state.decision_cache, app.state.alert_service)
 app.state.zone_status_aggregate = ZoneStatusService(app.state.prediction_cache, app.state.decision_cache)
 app.state.command_safety_service = CommandSafetyService(app.state.prediction_cache, get_settings())
 app.state.alert_repository = AlertRepository()
@@ -201,6 +205,7 @@ app.add_middleware(
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.TRUSTED_HOSTS))
 app.include_router(zones_router)
 app.include_router(recommendation_router, dependencies=ADMIN_WRITE_DEPENDENCIES)
+app.include_router(alerts_router, dependencies=ADMIN_WRITE_DEPENDENCIES)
 
 
 @app.exception_handler(AgTechError)
@@ -438,9 +443,8 @@ async def zone_alerts(
     acknowledged: bool | None = None,
     limit: int = Query(default=20, ge=1, le=100),
 ):
-    load_zone_feature(zone_id)
     if severity is not None:
-        invalid = [value for value in severity if value not in {"critical", "warning", "info", "degraded"}]
+        invalid = [value for value in severity if value not in {"critical", "moderate", "watch", "warning", "info", "degraded"}]
         if invalid:
             raise AgTechError(
                 error_code=ErrorCode.VALIDATION_ERROR,
@@ -448,8 +452,7 @@ async def zone_alerts(
                 status_code=422,
                 details={"severity": invalid},
             )
-    now = datetime.now(timezone.utc)
-    alerts = build_zone_alert_records(zone_id, now, repository=app.state.alert_repository)
+    alerts = await app.state.alert_service.list_zone_alerts(zone_id, limit=limit)
     if severity is not None:
         selected = set(severity)
         alerts = [alert for alert in alerts if alert.severity in selected]

@@ -86,6 +86,93 @@ def test_live_ai_client_custom_header_injection():
     anyio.run(run)
 
 
+def test_live_ai_client_omits_header_when_internal_key_unset():
+    async def run() -> None:
+        seen_headers = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_headers.update(request.headers)
+            return httpx.Response(
+                200,
+                json={
+                    "trace_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "zone_id": "A01",
+                    "timestamp": "2026-04-29T03:35:11.963000Z",
+                    "stress_prob": 0.5,
+                    "uncertainty": 0.1,
+                    "confidence_flag": "high",
+                    "degraded_mode": False,
+                    "attention_weights": [0.5, 0.3, 0.2],
+                    "model_version": "v1.0.0",
+                    "explanation": [],
+                    "latency_ms": 10.0,
+                },
+                request=request,
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            client = LiveAIClient(http, internal_api_key="")
+            await client.predict(
+                PredictRequest(zone_id="A01", timestamp="2026-04-29T03:35:11.963000Z")
+            )
+            assert "x-internal-api-key" not in seen_headers
+
+    anyio.run(run)
+
+
+def test_live_ai_client_ready_injects_internal_header_when_set():
+    async def run() -> None:
+        seen_headers = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_headers.update(request.headers)
+            return httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "model_loaded": True,
+                    "manifest_loaded": True,
+                    "readiness_error": None,
+                },
+                request=request,
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            client = LiveAIClient(http, internal_api_key="secret-key")
+            await client.ready()
+            assert seen_headers["x-internal-api-key"] == "secret-key"
+
+    anyio.run(run)
+
+
+def test_live_ai_client_ready_omits_internal_header_when_unset():
+    async def run() -> None:
+        seen_headers = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_headers.update(request.headers)
+            return httpx.Response(
+                200,
+                json={
+                    "status": "ok",
+                    "model_loaded": True,
+                    "manifest_loaded": True,
+                    "readiness_error": None,
+                },
+                request=request,
+            )
+
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
+            client = LiveAIClient(http, internal_api_key="")
+            await client.ready()
+            assert "x-internal-api-key" not in seen_headers
+
+    anyio.run(run)
+
+
 def test_live_ai_client_maps_upstream_500_to_inference_failed():
     async def run() -> None:
         def handler(request: httpx.Request) -> httpx.Response:

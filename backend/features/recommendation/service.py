@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from core.errors import AgTechError, ErrorCode
-from core.schemas import IrrigationDecision, RecommendFromCacheRequest, RecommendRequest
+from core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecommendFromCacheRequest, RecommendRequest
 from features.prediction.cache import PredictionCacheService
 from features.recommendation.policy import RECOMMENDATION_LATEST_TTL_SECONDS, apply_recommendation_policy
 
@@ -95,9 +95,10 @@ class DecisionCacheService:
 
 
 class RecommendationService:
-    def __init__(self, prediction_cache: PredictionCacheService, decision_cache: DecisionCacheService) -> None:
+    def __init__(self, prediction_cache: PredictionCacheService, decision_cache: DecisionCacheService, alert_service: object | None = None) -> None:
         self._prediction_cache = prediction_cache
         self._decision_cache = decision_cache
+        self._alert_service = alert_service
 
     async def recommend_from_cache(self, req: RecommendFromCacheRequest) -> IrrigationDecision:
         prediction_entry = await self._prediction_cache.get_latest(req.zone_id)
@@ -118,9 +119,11 @@ class RecommendationService:
             rain_forecast_3h=req.rain_forecast_3h,
             attention_weights=req.attention_weights or prediction.attention_weights,
         )
-        return await self.recommend(recommend_request, trace_id=str(prediction.trace_id))
+        decision = await self.recommend(recommend_request, trace_id=str(prediction.trace_id), emit_alert=False)
+        await self._emit_alert(req.zone_id, decision, prediction)
+        return decision
 
-    async def recommend(self, req: RecommendRequest, trace_id: str | None = None) -> IrrigationDecision:
+    async def recommend(self, req: RecommendRequest, trace_id: str | None = None, emit_alert: bool = True) -> IrrigationDecision:
         from decision_engine.main import evaluate_decision
 
         decision = evaluate_decision(req)
@@ -130,9 +133,34 @@ class RecommendationService:
             uncertainty=req.uncertainty,
             degraded_mode=req.degraded_mode,
         )
-        await self._decision_cache.store_latest(req.zone_id, decision, trace_id or str(decision.trace_id))
-        self._log_created(req, decision, trace_id or str(decision.trace_id))
+        trace = trace_id or str(decision.trace_id)
+        await self._decision_cache.store_latest(req.zone_id, decision, trace)
+        if emit_alert:
+            await self._emit_alert(req.zone_id, decision, self._prediction_from_request(req))
+        self._log_created(req, decision, trace)
         return decision
+
+    async def _emit_alert(self, zone_id: str, decision: IrrigationDecision, prediction: PredictResponse | None, *, imagery_stale: bool = False) -> None:
+        if self._alert_service is None:
+            return
+        create_for_recommendation = getattr(self._alert_service, "create_for_recommendation", None)
+        if create_for_recommendation is None:
+            return
+        await create_for_recommendation(zone_id, decision, prediction, imagery_stale=imagery_stale)
+
+    @staticmethod
+    def _prediction_from_request(req: RecommendRequest) -> PredictResponse:
+        return PredictResponse(
+            zone_id=req.zone_id,
+            timestamp=datetime.now(timezone.utc),
+            stress_prob=req.stress_prob,
+            uncertainty=req.uncertainty,
+            confidence_flag=ConfidenceFlag.LOW if req.degraded_mode else ConfidenceFlag.HIGH,
+            degraded_mode=req.degraded_mode,
+            attention_weights=req.attention_weights,
+            model_version="recommendation-derived",
+            latency_ms=0.0,
+        )
 
     def _log_created(self, req: RecommendRequest, decision: IrrigationDecision, trace_id: str) -> None:
         logger.info(

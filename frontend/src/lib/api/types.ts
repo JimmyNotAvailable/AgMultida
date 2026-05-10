@@ -86,7 +86,7 @@ export interface IrrigationCommandResponse {
   timestamp: string
 }
 
-export type AlertSeverity = 'critical' | 'warning' | 'info' | 'degraded'
+export type AlertSeverity = 'critical' | 'moderate' | 'watch' | 'warning' | 'info' | 'degraded'
 
 export interface AlertRecord {
   alert_id: string

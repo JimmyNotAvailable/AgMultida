@@ -167,6 +167,13 @@ export async function getZoneAlerts(zoneId: string): Promise<ZoneAlertFeedRespon
   }
 }
 
+export function acknowledgeAlert(alertId: string): Promise<ZoneAlertFeedResponse['alerts'][number]> {
+  return apiRequest<ZoneAlertFeedResponse['alerts'][number]>(`/v1/alerts/${encodeURIComponent(alertId)}/ack`, {
+    method: 'POST',
+  })
+}
+
+
 export async function getZoneImageryLatest(zoneId: string): Promise<ImageryScene> {
   return apiRequest<ImageryScene>(`/v1/zones/${encodeURIComponent(zoneId)}/imagery/latest`)
 }

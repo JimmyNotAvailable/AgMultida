@@ -10,6 +10,7 @@ import { ThemeToggle } from '../../../components/shared/ThemeToggle'
 import { createCommandWithAck, isLocalDemoResponse, recommend, recommendFromCache } from '../../../lib/api'
 import { ApiError, type ApiErrorBody, type ImageryScene, type IrrigationDecision, type PredictResponse, type ZoneStatusResponse } from '../../../lib/api/types'
 import { useLanguage } from '../../../lib/i18n/useLanguage'
+import { AlertFeed } from '../components/AlertFeed'
 import { DegradationBanner } from '../components/DegradationBanner'
 import { buildFallbackPrediction, getZoneById, zones } from '../dashboardData'
 import { useDashboardZones } from '../dashboardStore'
@@ -317,6 +318,10 @@ export function DashboardPage() {
 
         <aside className="data-stack">
           <ZoneOverlay selectedZoneId={selectedZoneId} status={currentStatus} prediction={currentPrediction} alerts={alerts} onConfirm={() => confirmMutation.mutate()} isConfirming={confirmMutation.isPending} rejection={commandRejection} ackOverride={ackOverride} onAckOverrideChange={setAckOverride} />
+          <article className="data-card explanation-card">
+            <h2>{t('Alert feed')}</h2>
+            <AlertFeed zoneId={selectedZoneId} alerts={alerts} isLoading={zoneAlertsQuery.isLoading} isError={zoneAlertsQuery.isError} onSelectZone={selectZone} />
+          </article>
           <article className="data-card explanation-card">
             <h2>{t('Model explanation')}</h2>
             {currentPrediction?.explanation?.length ? <div className="explanation-list">{currentPrediction.explanation.map((item) => <div className="explanation-item" key={`${item.feature}-${item.trend}`}><strong>{item.feature}</strong><span>{item.weight.toFixed(2)} / {item.trend}</span></div>)}</div> : <p className="section-copy">{t('Explanation unavailable')}</p>}
