@@ -1,7 +1,45 @@
 import { useQuery } from '@tanstack/react-query'
 import { getZones } from '../../lib/api'
 import type { ZoneRegistryResponse } from '../../lib/api/types'
+import type { WebSocketStatus } from '../../lib/realtime/types'
 import { zones as fallbackZones, type ZoneData, type ZoneState } from './dashboardData'
+
+interface DashboardState {
+  wsStatus: WebSocketStatus
+}
+
+interface DashboardStoreState extends DashboardState {
+  setWsStatus: (status: WebSocketStatus) => void
+}
+
+export const dashboardStore = createDashboardStore()
+
+function createDashboardStore() {
+  let state: DashboardState = { wsStatus: 'offline' }
+  return {
+    getState(): DashboardStoreState {
+      return {
+        ...state,
+        setWsStatus(status: WebSocketStatus): void {
+          state = { ...state, wsStatus: status }
+        },
+      }
+    },
+    setState(next: Partial<DashboardState>): void {
+      state = { ...state, ...next }
+    },
+  }
+}
+
+export function connectionStatusLabel(status: WebSocketStatus): string {
+  if (status === 'live') return 'Live'
+  if (status === 'reconnecting') return 'Reconnecting'
+  return 'Offline'
+}
+
+export function shouldUsePollingFallback(status: WebSocketStatus): boolean {
+  return status !== 'live'
+}
 
 export function useDashboardZones() {
   return useQuery({

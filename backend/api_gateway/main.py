@@ -37,6 +37,9 @@ from features.recommendation.service import DecisionCacheService, Recommendation
 from features.alerts.router import router as alerts_router
 from features.alerts.service import AlertService
 from features.alerts.telegram_worker import TelegramWorker, TelegramWorkerConfig
+from features.websocket.manager import WebSocketManager
+from features.websocket.redis_subscriber import RedisSubscriber
+from features.websocket.schemas import RealtimeEvent
 from features.zones.registry import ZoneRegistryService
 from features.zones.router import router as zones_router
 from features.zones.status_service import ZoneStatusService
@@ -158,6 +161,11 @@ async def lifespan(application: FastAPI):
     application.state.prediction_service = PredictionService(application.state.prediction_cache)
     application.state.decision_cache = DecisionCacheService(application.state.prediction_cache._redis_client)
     application.state.alert_service = AlertService(application.state.prediction_cache._redis_client)
+    application.state.websocket_manager = WebSocketManager()
+    application.state.websocket_subscriber_task = None
+    if application.state.prediction_cache._redis_client is not None:
+        subscriber = RedisSubscriber(application.state.websocket_manager)
+        application.state.websocket_subscriber_task = asyncio.create_task(subscriber.run_forever(application.state.prediction_cache._redis_client))
     application.state.telegram_worker_task = None
     if settings.ALERT_TELEGRAM_ENABLED and settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID and application.state.prediction_cache._redis_client is not None:
         telegram_worker = TelegramWorker(
@@ -181,6 +189,9 @@ async def lifespan(application: FastAPI):
     application.state.alert_repository = AlertRepository()
     yield
 
+    websocket_subscriber_task = getattr(application.state, "websocket_subscriber_task", None)
+    if websocket_subscriber_task is not None:
+        websocket_subscriber_task.cancel()
     telegram_task = getattr(application.state, "telegram_worker_task", None)
     if telegram_task is not None:
         telegram_task.cancel()
@@ -211,6 +222,8 @@ app.state.prediction_cache = PredictionCacheService()
 app.state.prediction_service = PredictionService(app.state.prediction_cache)
 app.state.decision_cache = DecisionCacheService()
 app.state.alert_service = AlertService()
+app.state.websocket_manager = WebSocketManager()
+app.state.websocket_subscriber_task = None
 app.state.recommendation_service = RecommendationService(app.state.prediction_cache, app.state.decision_cache, app.state.alert_service)
 app.state.zone_status_aggregate = ZoneStatusService(app.state.prediction_cache, app.state.decision_cache)
 app.state.command_safety_service = CommandSafetyService(app.state.prediction_cache, get_settings())
@@ -373,12 +386,21 @@ def build_telegram_readiness(settings, worker_task):
     return {"status": "ok"}
 
 
+async def publish_realtime_event(application: FastAPI, event: str, zone_id: str, payload: dict) -> None:
+    message = RealtimeEvent(event=event, payload=payload).model_dump_json()
+    redis_client = getattr(application.state.prediction_cache, "_redis_client", None)
+    if redis_client is not None:
+        await redis_client.publish(f"ws:zone:{zone_id}", message)
+    await application.state.websocket_manager.send_zone(zone_id, RealtimeEvent(event=event, payload=payload))
+
+
 @app.post("/v1/predict", response_model=PredictResponse, dependencies=ADMIN_WRITE_DEPENDENCIES)
 async def predict(req: PredictRequest, request: Request):
     prediction = await request.app.state.ai_client.predict(req)
     prediction = await request.app.state.prediction_service.complete_prediction(req, prediction)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
     await request.app.state.zone_status_aggregate.invalidate(req.zone_id)
+    await publish_realtime_event(request.app, "prediction_completed", req.zone_id, {"zone_id": req.zone_id, "prediction_id": prediction.prediction_id})
     return prediction
 
 
@@ -390,6 +412,7 @@ async def recommend(req: RecommendRequest, request: Request):
         decision = await request.app.state.recommendation_service.recommend(req)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
     await request.app.state.zone_status_aggregate.invalidate(req.zone_id)
+    await publish_realtime_event(request.app, "recommendation_created", req.zone_id, {"zone_id": req.zone_id, "action": decision.action.value})
     return decision
 
 
@@ -710,13 +733,28 @@ async def ws_updates(websocket: WebSocket):
         websocket.state.auth_context = payload
         check_rate_limit("ws-handshake", payload.get("sub", "anonymous"))
         await websocket.accept()
-        await websocket.send_json({"type": "connected", "message": "stub"})
+        zones = parse_ws_zones(websocket)
+        await websocket.app.state.websocket_manager.connect(websocket, zones=zones)
         while True:
             check_rate_limit("ws-message", payload.get("sub", "anonymous"))
-            data = await websocket.receive_text()
-            await websocket.send_json({"type": "echo", "data": data})
+            raw = await websocket.receive_text()
+            try:
+                message = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if message.get("event") == "subscribe":
+                requested = message.get("payload", {}).get("zones", [])
+                zones = {zone for zone in requested if isinstance(zone, str) and len(zone) == 3}
+                await websocket.app.state.websocket_manager.connect(websocket, zones=zones)
     except AgTechError as exc:
         if websocket.client_state != WebSocketState.DISCONNECTED:
             await websocket.close(code=1008, reason=exc.message)
     except WebSocketDisconnect:
-        pass
+        websocket.app.state.websocket_manager.disconnect(websocket)
+
+
+def parse_ws_zones(websocket: WebSocket) -> set[str]:
+    zones = websocket.query_params.get("zones")
+    if not zones:
+        return set()
+    return {zone.strip() for zone in zones.split(",") if zone.strip()}

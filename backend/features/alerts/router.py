@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 
 from core.schemas import AlertRecord
+from features.websocket.schemas import RealtimeEvent
 
 router = APIRouter(tags=["alerts"])
 
@@ -12,4 +13,8 @@ async def acknowledge_alert(alert_id: str, request: Request):
     alert = await request.app.state.alert_service.acknowledge(alert_id)
     request.app.state.zone_status_cache.invalidate(alert.zone_id)
     await request.app.state.zone_status_aggregate.invalidate(alert.zone_id)
+    await request.app.state.websocket_manager.send_zone(
+        alert.zone_id,
+        RealtimeEvent(event="alert_acknowledged", payload={"zone_id": alert.zone_id, "alert_id": alert.alert_id}),
+    )
     return alert

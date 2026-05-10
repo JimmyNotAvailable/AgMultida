@@ -8,12 +8,13 @@ import { ZoneOverlay } from '../../../components/dashboard/ZoneOverlay'
 import { LanguageToggle } from '../../../components/shared/LanguageToggle'
 import { ThemeToggle } from '../../../components/shared/ThemeToggle'
 import { createCommandWithAck, isLocalDemoResponse, recommend, recommendFromCache } from '../../../lib/api'
+import { useWebSocket } from '../../../lib/realtime/useWebSocket'
 import { ApiError, type ApiErrorBody, type ImageryScene, type IrrigationDecision, type PredictResponse, type ZoneStatusResponse } from '../../../lib/api/types'
 import { useLanguage } from '../../../lib/i18n/useLanguage'
 import { AlertFeed } from '../components/AlertFeed'
 import { DegradationBanner } from '../components/DegradationBanner'
 import { buildFallbackPrediction, getZoneById, zones } from '../dashboardData'
-import { useDashboardZones } from '../dashboardStore'
+import { connectionStatusLabel, dashboardStore, useDashboardZones } from '../dashboardStore'
 import { isZoneStatusStale, useDashboardQueries } from '../hooks/useDashboardQueries'
 import { getUncertaintyBadgeColor, usePredictionFlow } from '../hooks/usePredictionFlow'
 
@@ -29,6 +30,7 @@ function getInitialZoneId(): string {
 export function DashboardPage() {
   const { t } = useLanguage()
   const [selectedZoneId, setSelectedZoneId] = useState(getInitialZoneId)
+  const [wsStatus, setWsStatus] = useState(dashboardStore.getState().wsStatus)
   const [lastAction, setLastAction] = useState<'idle' | 'predict' | 'recommend' | 'status' | 'confirm'>('idle')
   const [imageryMode, setImageryMode] = useState<'rgb' | 'ndvi'>('rgb')
   const [imageryVisible, setImageryVisible] = useState(true)
@@ -42,6 +44,13 @@ export function DashboardPage() {
       setSelectedZoneId(dashboardZones[0].id)
     }
   }, [dashboardZones, selectedZoneId])
+
+  useWebSocket(selectedZoneId)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setWsStatus(dashboardStore.getState().wsStatus), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const { statusQuery: zoneStatusQuery, alertsQuery: zoneAlertsQuery, imageryLatestQuery, imageryHistoryQuery } = useDashboardQueries(selectedZoneId)
 
@@ -209,6 +218,7 @@ export function DashboardPage() {
           </div>
         </div>
         <div className="top-actions">
+          <span className={`status-pill ${wsStatus === 'live' ? 'ok' : wsStatus === 'reconnecting' ? 'warning' : 'critical'}`}>{connectionStatusLabel(wsStatus)}</span>
           <span className={`status-pill ${selectedZone.uncertainty > 0.3 ? 'warning' : 'ok'}`}>{selectedZone.uncertainty > 0.3 ? t('Degraded') : t('Live')}</span>
           <LanguageToggle />
           <ThemeToggle />
