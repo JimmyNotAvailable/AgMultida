@@ -126,6 +126,12 @@ class Settings:
         default_factory=lambda: int(os.getenv("ZONE_STATUS_CACHE_TTL_SECONDS", "300")),
     )
     REDIS_URL: str = field(default_factory=lambda: os.getenv("REDIS_URL", ""))
+    DEV_AUTH_BYPASS_ROLE: str = field(
+        default_factory=lambda: os.getenv("DEV_AUTH_BYPASS_ROLE", "viewer"),
+    )
+    ALLOW_STUBS: bool = field(
+        default_factory=lambda: os.getenv("ALLOW_STUBS", "true").lower() == "true",
+    )
 
     def __post_init__(self) -> None:
         if not self.JWT_SECRET:
@@ -139,6 +145,14 @@ class Settings:
             raise RuntimeError("RATE_LIMIT_BACKEND must be 'memory' or 'redis'")
         if self.ENV == "production" and not self.AUTH_REQUIRED:
             raise RuntimeError("AUTH_REQUIRED must stay true in production")
+        if self.ENV == "production" and self.ALLOW_STUBS:
+            raise RuntimeError(
+                "ALLOW_STUBS must be false in production"
+            )
+        if not self.ALLOW_STUBS and self.GATEWAY_MODE == "stub":
+            raise RuntimeError(
+                "GATEWAY_MODE=stub is not allowed when ALLOW_STUBS=false"
+            )
         if self.ENV == "production" and not self.WS_REQUIRE_AUTH:
             raise RuntimeError("WS_REQUIRE_AUTH must stay true in production")
         if self.ENV == "production" and not self.ENABLE_HSTS:
@@ -182,6 +196,11 @@ class Settings:
             )
         if self.INTERNAL_API_KEY and len(self.INTERNAL_API_KEY) < 16 and self.ENV == "production":
             raise RuntimeError("INTERNAL_API_KEY must be at least 16 characters")
+        valid_roles = {"viewer", "operator", "admin"}
+        if self.DEV_AUTH_BYPASS_ROLE not in valid_roles:
+            raise RuntimeError(
+                f"DEV_AUTH_BYPASS_ROLE must be one of {sorted(valid_roles)}"
+            )
 
 
 @lru_cache(maxsize=1)

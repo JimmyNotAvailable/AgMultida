@@ -85,7 +85,24 @@ def require_role(*allowed_roles: str):
 
         settings = get_settings()
         if not settings.AUTH_REQUIRED:
-            payload = {"sub": "dev-bypass", "role": allowed_roles[0] if allowed_roles else "admin"}
+            if settings.ENV not in {"development", "test"}:
+                raise AgTechError(
+                    error_code=ErrorCode.AUTH_INVALID_TOKEN,
+                    message="Auth bypass is disabled outside development and test",
+                    status_code=401,
+                )
+            bypass_role = settings.DEV_AUTH_BYPASS_ROLE
+            logger.warning(
+                "auth_bypass activated",
+                extra={
+                    "event": "auth_bypass",
+                    "bypass_role": bypass_role,
+                    "path": request.url.path,
+                    "method": request.method,
+                    "env": settings.ENV,
+                },
+            )
+            payload = {"sub": "dev-bypass", "role": bypass_role}
             request.state.auth_context = payload
             return payload
 

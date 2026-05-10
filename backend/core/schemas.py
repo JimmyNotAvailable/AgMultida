@@ -60,6 +60,7 @@ class PredictRequest(BaseModel):
 class PredictResponse(BaseModel):
     """Stress prediction result with uncertainty and XAI payload."""
     trace_id: UUID = Field(default_factory=uuid4)
+    prediction_id: Optional[str] = None
     zone_id: str
     timestamp: datetime
     stress_prob: float = Field(ge=0.0, le=1.0)
@@ -85,6 +86,15 @@ class RecommendRequest(BaseModel):
     degraded_mode: bool = False
     soil_moisture: float = Field(ge=0.0, le=100.0)
     rain_forecast_3h: float = Field(ge=0.0, le=1.0)
+    attention_weights: list[float] = Field(default_factory=list)
+
+
+class RecommendFromCacheRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    zone_id: str = Field(pattern=r"^[A-Z]\d{2}$")
+    soil_moisture: float = Field(default=35.0, ge=0.0, le=100.0)
+    rain_forecast_3h: float = Field(default=0.0, ge=0.0, le=1.0)
     attention_weights: list[float] = Field(default_factory=list)
 
 

@@ -1,24 +1,28 @@
-import type { AlertRecord, ZoneStatusResponse } from '../../lib/api/types'
+import { ConfirmAction } from '../../features/dashboard/components/ConfirmAction'
+import type { AlertRecord, ApiErrorBody, ZoneStatusResponse } from '../../lib/api/types'
 import { getZoneById } from '../../features/dashboard/dashboardData'
 
 interface ZoneOverlayProps {
   selectedZoneId: string
   status: ZoneStatusResponse | null
+  prediction?: ZoneStatusResponse['latest_prediction']
   alerts: AlertRecord[]
   onConfirm: () => void
   isConfirming: boolean
+  rejection: ApiErrorBody | null
+  ackOverride: boolean
+  onAckOverrideChange: (value: boolean) => void
 }
 
-export function ZoneOverlay({ selectedZoneId, status, alerts, onConfirm, isConfirming }: ZoneOverlayProps) {
+export function ZoneOverlay({ selectedZoneId, status, prediction: activePrediction, alerts, onConfirm, isConfirming, rejection, ackOverride, onAckOverrideChange }: ZoneOverlayProps) {
   const zone = getZoneById(selectedZoneId)
-  const prediction = status?.latest_prediction ?? null
+  const prediction = activePrediction ?? status?.latest_prediction ?? null
   const decision = status?.latest_decision ?? null
   const telemetry = status?.latest_telemetry ?? null
   const soilMoisture = typeof telemetry?.soil_moisture === 'number' ? telemetry.soil_moisture : zone.moisture
   const airTemp = typeof telemetry?.air_temp === 'number' ? telemetry.air_temp : null
   const ec = typeof telemetry?.ec === 'number' ? telemetry.ec : null
   const rain3h = typeof telemetry?.rain_3h === 'number' ? telemetry.rain_3h : zone.rain
-  const confirmBlocked = prediction ? prediction.uncertainty > 0.3 : true
 
   return (
     <aside className="data-card zone-side-panel" aria-label="Zone side panel">
@@ -42,6 +46,7 @@ export function ZoneOverlay({ selectedZoneId, status, alerts, onConfirm, isConfi
         <div><span>EC</span><strong>{ec ?? 'n/a'}</strong></div>
         <div><span>Rain 3h</span><strong>{rain3h}</strong></div>
       </div>
+      {prediction?.explanation?.length ? <div className="alert-list"><h3>XAI features</h3>{prediction.explanation.map((item) => <div className="alert-item" key={`${item.feature}-${item.trend}`}><strong>{item.feature}</strong><span>{item.weight.toFixed(2)} · {item.trend}</span></div>)}</div> : null}
 
       <div className="action-panel">
         <h3>Recommendation</h3>
@@ -50,9 +55,14 @@ export function ZoneOverlay({ selectedZoneId, status, alerts, onConfirm, isConfi
           <div><span>Volume</span><strong>{decision ? `${decision.volume_mm} mm` : 'n/a'}</strong></div>
           <div><span>Reason</span><strong>{decision?.reason ?? 'n/a'}</strong></div>
         </div>
-        <button className="btn primary" type="button" disabled={confirmBlocked || isConfirming} onClick={onConfirm}>
-          {confirmBlocked ? 'Confirm blocked by uncertainty' : isConfirming ? 'Confirming...' : 'Confirm irrigation'}
-        </button>
+        <ConfirmAction
+          prediction={prediction}
+          isConfirming={isConfirming}
+          rejection={rejection}
+          ackOverride={ackOverride}
+          onAckOverrideChange={onAckOverrideChange}
+          onConfirm={onConfirm}
+        />
       </div>
 
       <div className="alert-list">

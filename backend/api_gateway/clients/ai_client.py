@@ -15,6 +15,8 @@ from typing import Protocol, runtime_checkable
 import httpx
 from pydantic import ValidationError
 
+from features.prediction.policy import PREDICTION_MODALITY_UNCERTAINTY_PENALTY, PREDICTION_TIMEOUT_DEGRADE_MS
+
 from core.schemas import (
     ConfidenceFlag,
     PredictRequest,
@@ -87,7 +89,8 @@ class LiveAIClient:
                 headers=self._internal_headers or None,
             )
             resp.raise_for_status()
-            return PredictResponse.model_validate(resp.json())
+            prediction = PredictResponse.model_validate(resp.json())
+            return self._apply_transport_policy(prediction)
         except (ValueError, ValidationError) as exc:
             raise AgTechError(
                 error_code=ErrorCode.INFERENCE_FAILED,
@@ -116,6 +119,19 @@ class LiveAIClient:
                 status_code=502,
                 details={"service": "ai_serving"},
             ) from exc
+
+    def _apply_transport_policy(self, prediction: PredictResponse) -> PredictResponse:
+        degraded = prediction.degraded_mode or prediction.latency_ms > PREDICTION_TIMEOUT_DEGRADE_MS
+        uncertainty = prediction.uncertainty
+        if len(prediction.attention_weights) < 3:
+            uncertainty = min(1.0, uncertainty + PREDICTION_MODALITY_UNCERTAINTY_PENALTY)
+        return prediction.model_copy(
+            update={
+                "degraded_mode": degraded,
+                "confidence_flag": ConfidenceFlag.LOW if degraded else prediction.confidence_flag,
+                "uncertainty": uncertainty,
+            }
+        )
 
     async def ready(self) -> dict[str, object]:
         try:

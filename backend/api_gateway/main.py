@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
+import logging
+
 import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -26,6 +28,13 @@ from decision_engine.alert_engine import AlertEvaluationInput, AlertRepository, 
 from core.config import get_settings
 from core.db import check_database_ready, close_db_pool, open_db_pool
 from core.errors import AgTechError, ErrorCode, mask_internal_exception
+from features.commands.service import CommandSafetyService
+from features.prediction.cache import PredictionCacheService
+from features.prediction.service import PredictionService
+from features.recommendation.router import router as recommendation_router
+from features.recommendation.service import DecisionCacheService, RecommendationService
+from features.zones.registry import ZoneRegistryService
+from features.zones.router import router as zones_router
 from core.geospatial import calculate_centroid
 from core.imagery import get_latest_zone_imagery_for_api, get_scene_for_preview, get_zone_imagery_history_for_api
 from core.imagery_proxy import build_preview_cache_headers, build_preview_png
@@ -48,8 +57,6 @@ from core.schemas import (
     RecommendRequest,
     TelemetryIngestRequest,
     TelemetryIngestResponse,
-    ZoneListItemResponse,
-    ZoneListResponse,
     ZoneRegistryEntry,
     ZoneStatusResponse,
 )
@@ -66,9 +73,40 @@ ADMIN_READ_DEPENDENCIES = [admin_read_dependency, zone_read_limit_dependency]
 ADMIN_WRITE_DEPENDENCIES = [admin_write_dependency, admin_mutation_dependency]
 
 
+def build_prediction_cache_service() -> PredictionCacheService:
+    settings = get_settings()
+    redis_client = None
+    if settings.REDIS_URL:
+        try:
+            from redis import asyncio as redis_asyncio
+        except ImportError:
+            redis_client = None
+        else:
+            redis_client = redis_asyncio.from_url(settings.REDIS_URL)
+    return PredictionCacheService(redis_client=redis_client)
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     settings = get_settings()
+
+    if settings.ENV == "production" and settings.ALLOW_STUBS:
+        raise RuntimeError("ALLOW_STUBS must be false in production")
+    if not settings.ALLOW_STUBS and settings.GATEWAY_MODE == "stub":
+        raise RuntimeError("GATEWAY_MODE=stub is not allowed when ALLOW_STUBS=false")
+
+    logger.info(
+        "gateway starting",
+        extra={
+            "event": "gateway_startup",
+            "env": settings.ENV,
+            "gateway_mode": settings.GATEWAY_MODE,
+            "auth_required": settings.AUTH_REQUIRED,
+            "allow_stubs": settings.ALLOW_STUBS,
+            "dev_auth_bypass_role": settings.DEV_AUTH_BYPASS_ROLE,
+        },
+    )
+
     if settings.GATEWAY_MODE == "live" and not settings.AI_SERVING_URL:
         raise RuntimeError("AI_SERVING_URL must be set when GATEWAY_MODE=live")
 
@@ -110,6 +148,12 @@ async def lifespan(application: FastAPI):
 
     application.state.gateway_mode = settings.GATEWAY_MODE
     application.state.zone_status_cache = InMemoryZoneStatusCache(settings.ZONE_STATUS_CACHE_TTL_SECONDS)
+    application.state.zone_registry_service = ZoneRegistryService(ZONE_REGISTRY_PATH, ZONE_GEOJSON_PATH)
+    application.state.prediction_cache = build_prediction_cache_service()
+    application.state.prediction_service = PredictionService(application.state.prediction_cache)
+    application.state.decision_cache = DecisionCacheService(application.state.prediction_cache._redis_client)
+    application.state.recommendation_service = RecommendationService(application.state.prediction_cache, application.state.decision_cache)
+    application.state.command_safety_service = CommandSafetyService(application.state.prediction_cache, settings)
     application.state.alert_repository = AlertRepository()
     yield
 
@@ -124,6 +168,10 @@ async def lifespan(application: FastAPI):
     await close_db_pool()
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ZONE_REGISTRY_PATH = PROJECT_ROOT / "metadata" / "zone_registry.csv"
+ZONE_GEOJSON_PATH = PROJECT_ROOT / "metadata" / "zones.geojson"
+
 app = FastAPI(title="AgMultida API Gateway", version="1.0.0", lifespan=lifespan)
 app.state.ai_client = StubAIClient()
 app.state.ingestion_client = StubIngestionClient()
@@ -131,6 +179,12 @@ app.state.decision_client = StubDecisionClient()
 app.state.gateway_mode = "stub"
 app.state.db_enabled = False
 app.state.zone_status_cache = InMemoryZoneStatusCache(get_settings().ZONE_STATUS_CACHE_TTL_SECONDS)
+app.state.zone_registry_service = ZoneRegistryService(ZONE_REGISTRY_PATH, ZONE_GEOJSON_PATH)
+app.state.prediction_cache = PredictionCacheService()
+app.state.prediction_service = PredictionService(app.state.prediction_cache)
+app.state.decision_cache = DecisionCacheService()
+app.state.recommendation_service = RecommendationService(app.state.prediction_cache, app.state.decision_cache)
+app.state.command_safety_service = CommandSafetyService(app.state.prediction_cache, get_settings())
 app.state.alert_repository = AlertRepository()
 
 settings = get_settings()
@@ -142,10 +196,8 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", settings.INTERNAL_API_KEY_HEADER],
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.TRUSTED_HOSTS))
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ZONE_REGISTRY_PATH = PROJECT_ROOT / "metadata" / "zone_registry.csv"
-ZONE_GEOJSON_PATH = PROJECT_ROOT / "metadata" / "zones.geojson"
+app.include_router(zones_router)
+app.include_router(recommendation_router, dependencies=ADMIN_WRITE_DEPENDENCIES)
 
 
 @app.exception_handler(AgTechError)
@@ -168,6 +220,18 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if get_settings().ENABLE_HSTS:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+logger = logging.getLogger("agtech.gateway")
+
+
+@app.middleware("http")
+async def trace_id_middleware(request: Request, call_next):
+    trace_id = request.headers.get("X-Trace-ID") or str(uuid4())
+    request.state.trace_id = trace_id
+    response = await call_next(request)
+    response.headers["X-Trace-ID"] = trace_id
     return response
 
 
@@ -268,13 +332,17 @@ async def readyz(request: Request):
 @app.post("/v1/predict", response_model=PredictResponse, dependencies=ADMIN_WRITE_DEPENDENCIES)
 async def predict(req: PredictRequest, request: Request):
     prediction = await request.app.state.ai_client.predict(req)
+    prediction = await request.app.state.prediction_service.complete_prediction(req, prediction)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
     return prediction
 
 
 @app.post("/v1/recommend", response_model=IrrigationDecision, dependencies=ADMIN_WRITE_DEPENDENCIES)
 async def recommend(req: RecommendRequest, request: Request):
-    decision = request.app.state.decision_client.recommend(req)
+    if request.app.state.gateway_mode == "stub":
+        decision = request.app.state.decision_client.recommend(req)
+    else:
+        decision = await request.app.state.recommendation_service.recommend(req)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
     return decision
 
@@ -287,7 +355,8 @@ async def ingest_telemetry(req: TelemetryIngestRequest, request: Request):
 
 
 @app.post("/v1/commands", response_model=IrrigationCommandResponse, dependencies=ADMIN_WRITE_DEPENDENCIES)
-async def create_command(req: IrrigationCommandRequest, request: Request):
+async def create_command(req: IrrigationCommandRequest, request: Request, ack: bool = Query(default=False)):
+    await request.app.state.command_safety_service.ensure_allowed(req, ack_override=ack)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
     return IrrigationCommandResponse(
         command_id=f"cmd_{uuid4().hex[:8]}",
@@ -296,22 +365,6 @@ async def create_command(req: IrrigationCommandRequest, request: Request):
         timestamp=datetime.now(timezone.utc),
     )
 
-
-@app.get("/v1/zones", response_model=ZoneListResponse, dependencies=ADMIN_READ_DEPENDENCIES)
-async def list_zones():
-    checked_at = datetime.now(timezone.utc)
-    return ZoneListResponse(
-        zones=[
-            ZoneListItemResponse(
-                zone=entry,
-                command_state=None,
-                confidence_flag=None,
-                degraded_mode=None,
-                updated_at=checked_at,
-            )
-            for entry in load_zone_registry()
-        ],
-    )
 
 
 @app.get("/v1/zones/{zone_id}/weather/latest", response_model=ZoneWeatherResponse, dependencies=ADMIN_READ_DEPENDENCIES)
@@ -330,6 +383,15 @@ async def zone_status(request: Request, zone_id: str = RoutePath(pattern=r"^[A-Z
     zone_feature = load_zone_feature(zone_id)
     weather = await fetch_weather_for_zone(zone_id, zone_feature["geometry"]["coordinates"][0])
     status = build_zone_status(zone_id=zone_id, weather=weather)
+    prediction_cache_entry = await request.app.state.prediction_cache.get_latest(zone_id)
+    decision_cache_entry = await request.app.state.decision_cache.get_latest(zone_id)
+    updates = {}
+    if prediction_cache_entry is not None:
+        updates["latest_prediction"] = prediction_cache_entry.response
+    if decision_cache_entry is not None:
+        updates["latest_decision"] = decision_cache_entry.decision
+    if updates:
+        status = status.model_copy(update=updates)
     return request.app.state.zone_status_cache.set(zone_id, status)
 
 

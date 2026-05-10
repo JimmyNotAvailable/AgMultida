@@ -7,10 +7,13 @@ import { ZoneMap } from '../../../components/dashboard/ZoneMap'
 import { ZoneOverlay } from '../../../components/dashboard/ZoneOverlay'
 import { LanguageToggle } from '../../../components/shared/LanguageToggle'
 import { ThemeToggle } from '../../../components/shared/ThemeToggle'
-import { createCommand, getZoneAlerts, getZoneImageryHistorySafe, getZoneImageryLatestSafe, getZoneStatus, isLocalDemoResponse, predict, recommend } from '../../../lib/api'
-import type { ImageryScene, IrrigationDecision, PredictResponse, ZoneStatusResponse } from '../../../lib/api/types'
+import { createCommandWithAck, getZoneAlerts, getZoneImageryHistorySafe, getZoneImageryLatestSafe, getZoneStatus, isLocalDemoResponse, recommend, recommendFromCache } from '../../../lib/api'
+import { ApiError, type ApiErrorBody, type ImageryScene, type IrrigationDecision, type PredictResponse, type ZoneStatusResponse } from '../../../lib/api/types'
 import { useLanguage } from '../../../lib/i18n/useLanguage'
+import { DegradationBanner } from '../components/DegradationBanner'
 import { buildFallbackPrediction, getZoneById, zones } from '../dashboardData'
+import { useDashboardZones } from '../dashboardStore'
+import { getUncertaintyBadgeColor, usePredictionFlow } from '../hooks/usePredictionFlow'
 
 const DEFAULT_ZONE_ID = 'A01'
 const DEFAULT_TIMESTAMP = '2026-05-08T08:42:00Z'
@@ -18,7 +21,7 @@ const DEFAULT_TIMESTAMP = '2026-05-08T08:42:00Z'
 function getInitialZoneId(): string {
   if (typeof window === 'undefined') return DEFAULT_ZONE_ID
   const queryZone = new URLSearchParams(window.location.search).get('zone')
-  return queryZone && zones.some((zone) => zone.id === queryZone) ? queryZone : DEFAULT_ZONE_ID
+  return queryZone ?? DEFAULT_ZONE_ID
 }
 
 export function DashboardPage() {
@@ -28,7 +31,15 @@ export function DashboardPage() {
   const [imageryMode, setImageryMode] = useState<'rgb' | 'ndvi'>('rgb')
   const [imageryVisible, setImageryVisible] = useState(true)
   const [selectedImageryScene, setSelectedImageryScene] = useState<ImageryScene | null>(null)
-  const selectedZone = useMemo(() => getZoneById(selectedZoneId), [selectedZoneId])
+  const zonesQuery = useDashboardZones()
+  const dashboardZones = zonesQuery.data ?? zones
+  const selectedZone = useMemo(() => dashboardZones.find((zone) => zone.id === selectedZoneId) ?? getZoneById(selectedZoneId), [dashboardZones, selectedZoneId])
+
+  useEffect(() => {
+    if (dashboardZones.length > 0 && !dashboardZones.some((zone) => zone.id === selectedZoneId)) {
+      setSelectedZoneId(dashboardZones[0].id)
+    }
+  }, [dashboardZones, selectedZoneId])
 
   const imageryLatestQuery = useQuery({
     queryKey: ['dashboard-zone-imagery-latest', selectedZoneId],
@@ -71,14 +82,32 @@ export function DashboardPage() {
     refetchOnReconnect: false,
   })
 
-  const predictMutation = useMutation({
-    mutationFn: () => predict({ zone_id: selectedZoneId, timestamp: DEFAULT_TIMESTAMP, model_version: null }),
-    onMutate: () => setLastAction('predict'),
-  })
+  const predictMutation = usePredictionFlow({ zoneId: selectedZoneId, timestamp: DEFAULT_TIMESTAMP })
+
+  useEffect(() => {
+    if (predictMutation.status !== 'idle') {
+      setLastAction('predict')
+    }
+  }, [predictMutation.status])
 
   const recommendMutation = useMutation({
     mutationFn: async () => {
       const prediction = predictMutation.data ?? buildFallbackPrediction(selectedZone)
+      try {
+        return await recommendFromCache({
+          zone_id: selectedZoneId,
+          soil_moisture: selectedZone.moisture,
+          rain_forecast_3h: selectedZone.rain,
+          attention_weights: prediction.attention_weights,
+        })
+      } catch (error) {
+        if (!(error instanceof ApiError)) {
+          throw error
+        }
+        if (error.status !== 409 || error.body?.error_code !== 'PREDICTION_CACHE_MISS') {
+          throw error
+        }
+      }
       return recommend({
         zone_id: selectedZoneId,
         stress_prob: prediction.stress_prob,
@@ -91,6 +120,9 @@ export function DashboardPage() {
     },
     onMutate: () => setLastAction('recommend'),
   })
+
+  const [ackOverride, setAckOverride] = useState(false)
+  const [commandRejection, setCommandRejection] = useState<ApiErrorBody | null>(null)
 
   const latestRecommendation = recommendMutation.data
     ? recommendMutation.data
@@ -105,15 +137,25 @@ export function DashboardPage() {
       if (!canConfirmServerDecision || latestRecommendation === null) {
         throw new Error('Trusted server recommendation required before confirm')
       }
-      return createCommand({
+      return createCommandWithAck({
         zone_id: selectedZoneId,
         action: latestRecommendation.action,
         volume_mm: latestRecommendation.volume_mm,
         source: 'ai_recommendation',
-      })
+        operator_note: ackOverride ? 'Operator acknowledged degraded prediction override' : null,
+      }, ackOverride)
     },
-    onMutate: () => setLastAction('confirm'),
+    onMutate: () => {
+      setCommandRejection(null)
+      setLastAction('confirm')
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        setCommandRejection(error.body)
+      }
+    },
     onSuccess: async () => {
+      setAckOverride(false)
       await Promise.all([zoneStatusQuery.refetch(), zoneAlertsQuery.refetch()])
     },
   })
@@ -150,6 +192,8 @@ export function DashboardPage() {
     setImageryMode('rgb')
     setImageryVisible(true)
     setSelectedImageryScene(null)
+    setAckOverride(false)
+    setCommandRejection(null)
   }, [selectedZoneId])
 
   useEffect(() => {
@@ -189,7 +233,7 @@ export function DashboardPage() {
           <h2>{t('Zone Tree')}</h2>
           <p className="section-copy">{t('Select a zone on the map, then run prediction or recommendation.')}</p>
           <div className="sidebar-list">
-            {zones.map((zone) => (
+            {dashboardZones.map((zone) => (
               <button key={zone.id} className={`sidebar-button ${zone.id === selectedZoneId ? 'active' : ''}`} type="button" onClick={() => selectZone(zone.id)}>
                 <span><strong>{zone.name}</strong><small>{zone.note}</small></span>
                 <span className={`status-dot ${zone.state}`} />
@@ -260,7 +304,8 @@ export function DashboardPage() {
           />
 
           <div className="result-grid">
-            {(isLocalDemoResponse(currentPrediction) || isLocalDemoResponse(currentDecision) || isLocalDemoResponse(currentStatus)) && <article className="data-card degraded-banner-card"><strong>{t('Backend unavailable. Showing local demo result.')}</strong></article>}
+            <DegradationBanner prediction={currentPrediction} />
+            {(isLocalDemoResponse(currentDecision) || isLocalDemoResponse(currentStatus)) && <article className="data-card degraded-banner-card"><strong>{t('Backend unavailable. Showing local demo result.')}</strong></article>}
             <article className="data-card prediction-card">
               <div className="card-head"><h2>{t('Prediction result')}</h2><span className={`badge ${predictionBadgeClass(currentPrediction?.confidence_flag)}`}>{currentPrediction ? `${t('Confidence')}: ${t(currentPrediction.confidence_flag)}` : t('No result yet')}</span></div>
               <p className="caption">{lastAction === 'predict' && predictMutation.isPending ? t('Prediction is running...') : currentPrediction ? t('Prediction completed.') : t('Click an action to see a concrete model output.')}</p>
@@ -280,7 +325,7 @@ export function DashboardPage() {
         </section>
 
         <aside className="data-stack">
-          <ZoneOverlay selectedZoneId={selectedZoneId} status={currentStatus} alerts={alerts} onConfirm={() => confirmMutation.mutate()} isConfirming={confirmMutation.isPending} />
+          <ZoneOverlay selectedZoneId={selectedZoneId} status={currentStatus} prediction={currentPrediction} alerts={alerts} onConfirm={() => confirmMutation.mutate()} isConfirming={confirmMutation.isPending} rejection={commandRejection} ackOverride={ackOverride} onAckOverrideChange={setAckOverride} />
           <article className="data-card explanation-card">
             <h2>{t('Model explanation')}</h2>
             {currentPrediction?.explanation?.length ? <div className="explanation-list">{currentPrediction.explanation.map((item) => <div className="explanation-item" key={`${item.feature}-${item.trend}`}><strong>{item.feature}</strong><span>{item.weight.toFixed(2)} / {item.trend}</span></div>)}</div> : <p className="section-copy">{t('Explanation unavailable')}</p>}
@@ -292,7 +337,8 @@ export function DashboardPage() {
 }
 
 function PredictionResult({ prediction, t }: { prediction: PredictResponse; t: (value: string) => string }) {
-  return <><div className="stress-value" data-testid="prediction-percent">{Math.round(prediction.stress_prob * 100)}%</div><div className="progress-track"><span style={{ width: `${Math.round(prediction.stress_prob * 100)}%` }} /></div><div className="metric-grid metric-grid-2"><div><span>{t('Stress probability')}</span><strong>{prediction.stress_prob.toFixed(2)}</strong></div><div><span>{t('Uncertainty')}</span><strong>{prediction.uncertainty.toFixed(2)}</strong></div><div><span>{t('Model version')}</span><strong>{prediction.model_version}</strong></div><div><span>{t('Latency')}</span><strong>{Math.round(prediction.latency_ms)} ms</strong></div><div><span>{t('Degraded mode')}</span><strong>{t(String(prediction.degraded_mode))}</strong></div><div><span>Trace</span><strong>{prediction.trace_id ?? 'n/a'}</strong></div></div></>
+  const uncertaintyColor = getUncertaintyBadgeColor(prediction.uncertainty)
+  return <><div className="stress-value" data-testid="prediction-percent">{Math.round(prediction.stress_prob * 100)}%</div><div className="progress-track"><span style={{ width: `${Math.round(prediction.stress_prob * 100)}%` }} /></div><div className="metric-grid metric-grid-2"><div><span>{t('Stress probability')}</span><strong>{prediction.stress_prob.toFixed(2)}</strong></div><div><span>{t('Uncertainty')}</span><strong><span className={`badge ${uncertaintyColor}`}>{prediction.uncertainty.toFixed(2)}</span></strong></div><div><span>{t('Model version')}</span><strong>{prediction.model_version}</strong></div><div><span>{t('Latency')}</span><strong>{Math.round(prediction.latency_ms)} ms</strong></div><div><span>{t('Degraded mode')}</span><strong>{t(String(prediction.degraded_mode))}</strong></div><div><span>Trace</span><strong>{prediction.trace_id ?? 'n/a'}</strong></div></div></>
 }
 
 function DecisionResult({ decision, t }: { decision: IrrigationDecision; t: (value: string) => string }) {
