@@ -107,6 +107,33 @@ class Settings:
     AI_SERVING_STRICT_READY: bool = field(
         default_factory=lambda: os.getenv("AI_SERVING_STRICT_READY", "false").lower() == "true",
     )
+    ALERT_TELEGRAM_ENABLED: bool = field(
+        default_factory=lambda: os.getenv("ALERT_TELEGRAM_ENABLED", "false").lower() == "true",
+    )
+    TELEGRAM_BOT_TOKEN: str = field(
+        default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN", ""),
+    )
+    TELEGRAM_CHAT_ID: str = field(
+        default_factory=lambda: os.getenv("TELEGRAM_CHAT_ID", ""),
+    )
+    TELEGRAM_API_BASE_URL: str = field(
+        default_factory=lambda: os.getenv("TELEGRAM_API_BASE_URL", "https://api.telegram.org"),
+    )
+    TELEGRAM_CONSUMER_GROUP: str = field(
+        default_factory=lambda: os.getenv("TELEGRAM_CONSUMER_GROUP", "alert-monitor"),
+    )
+    TELEGRAM_CONSUMER_NAME: str = field(
+        default_factory=lambda: os.getenv("TELEGRAM_CONSUMER_NAME", "gateway-1"),
+    )
+    TELEGRAM_MAX_RETRIES: int = field(
+        default_factory=lambda: int(os.getenv("TELEGRAM_MAX_RETRIES", "3")),
+    )
+    TELEGRAM_BLOCK_MS: int = field(
+        default_factory=lambda: int(os.getenv("TELEGRAM_BLOCK_MS", "1000")),
+    )
+    TELEGRAM_BACKOFF_BASE_SECONDS: float = field(
+        default_factory=lambda: float(os.getenv("TELEGRAM_BACKOFF_BASE_SECONDS", "1.0")),
+    )
     WEATHER_API_BASE_URL: str = field(
         default_factory=lambda: os.getenv("WEATHER_API_BASE_URL", "https://api.open-meteo.com/v1"),
     )

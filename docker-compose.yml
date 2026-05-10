@@ -169,6 +169,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       AI_SERVING_URL: http://ai-serving:8001
       INGESTION_SERVICE_URL: http://ingestion-service:8003
+      ALERT_TELEGRAM_ENABLED: ${ALERT_TELEGRAM_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     ports:
       - "${API_GATEWAY_PORT:-8000}:8000"
     depends_on:

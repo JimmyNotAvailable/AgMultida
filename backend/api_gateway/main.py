@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 import sys
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -35,6 +36,7 @@ from features.recommendation.router import router as recommendation_router
 from features.recommendation.service import DecisionCacheService, RecommendationService
 from features.alerts.router import router as alerts_router
 from features.alerts.service import AlertService
+from features.alerts.telegram_worker import TelegramWorker, TelegramWorkerConfig
 from features.zones.registry import ZoneRegistryService
 from features.zones.router import router as zones_router
 from features.zones.status_service import ZoneStatusService
@@ -156,12 +158,32 @@ async def lifespan(application: FastAPI):
     application.state.prediction_service = PredictionService(application.state.prediction_cache)
     application.state.decision_cache = DecisionCacheService(application.state.prediction_cache._redis_client)
     application.state.alert_service = AlertService(application.state.prediction_cache._redis_client)
+    application.state.telegram_worker_task = None
+    if settings.ALERT_TELEGRAM_ENABLED and settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID and application.state.prediction_cache._redis_client is not None:
+        telegram_worker = TelegramWorker(
+            application.state.prediction_cache._redis_client,
+            TelegramWorkerConfig(
+                enabled=settings.ALERT_TELEGRAM_ENABLED,
+                bot_token=settings.TELEGRAM_BOT_TOKEN,
+                chat_id=settings.TELEGRAM_CHAT_ID,
+                api_base_url=settings.TELEGRAM_API_BASE_URL,
+                consumer_group=settings.TELEGRAM_CONSUMER_GROUP,
+                consumer_name=settings.TELEGRAM_CONSUMER_NAME,
+                max_retries=settings.TELEGRAM_MAX_RETRIES,
+                block_ms=settings.TELEGRAM_BLOCK_MS,
+                backoff_base_seconds=settings.TELEGRAM_BACKOFF_BASE_SECONDS,
+            ),
+        )
+        application.state.telegram_worker_task = asyncio.create_task(telegram_worker.run_forever())
     application.state.recommendation_service = RecommendationService(application.state.prediction_cache, application.state.decision_cache, application.state.alert_service)
     application.state.zone_status_aggregate = ZoneStatusService(application.state.prediction_cache, application.state.decision_cache, application.state.prediction_cache._redis_client)
     application.state.command_safety_service = CommandSafetyService(application.state.prediction_cache, settings)
     application.state.alert_repository = AlertRepository()
     yield
 
+    telegram_task = getattr(application.state, "telegram_worker_task", None)
+    if telegram_task is not None:
+        telegram_task.cancel()
     if hasattr(application.state, "ai_client") and hasattr(application.state.ai_client, "close"):
         await application.state.ai_client.close()
     if hasattr(application.state, "ingestion_client") and hasattr(application.state.ingestion_client, "close"):
@@ -287,7 +309,9 @@ async def healthz():
 async def readyz(request: Request):
     mode = getattr(request.app.state, "gateway_mode", "unknown")
     checked_at = datetime.now(timezone.utc).isoformat()
+    settings = get_settings()
     decision_dep = {"status": "stub"} if mode == "stub" else {"status": "in_process", "checked_at": checked_at}
+    telegram_dep = build_telegram_readiness(settings, getattr(request.app.state, "telegram_worker_task", None))
     database_dep = {"status": "disabled"}
     if request.app.state.db_enabled:
         database = await check_database_ready()
@@ -298,7 +322,7 @@ async def readyz(request: Request):
         }
 
     if mode == "stub":
-        overall = "ok" if database_dep["status"] in {"ok", "disabled"} else "degraded"
+        overall = "ok" if database_dep["status"] in {"ok", "disabled"} and telegram_dep["status"] != "degraded" else "degraded"
         return {
             "status": overall,
             "mode": mode,
@@ -307,6 +331,7 @@ async def readyz(request: Request):
                 "ai_serving": {"status": "stub", "checked_at": checked_at},
                 "ingestion_service": {"status": "stub", "checked_at": checked_at},
                 "decision_engine": decision_dep,
+                "telegram": telegram_dep,
             },
         }
 
@@ -324,7 +349,7 @@ async def readyz(request: Request):
         "checked_at": checked_at,
         "database": ingestion_ready.get("database"),
     }
-    gateway_status = "ok" if ai_dep["status"] == "ok" and database_dep["status"] in {"ok", "disabled"} else "degraded"
+    gateway_status = "ok" if ai_dep["status"] == "ok" and database_dep["status"] in {"ok", "disabled"} and telegram_dep["status"] != "degraded" else "degraded"
     return {
         "status": gateway_status,
         "mode": mode,
@@ -333,8 +358,19 @@ async def readyz(request: Request):
             "ai_serving": ai_dep,
             "ingestion_service": ingestion_dep,
             "decision_engine": decision_dep,
+            "telegram": telegram_dep,
         },
     }
+
+
+def build_telegram_readiness(settings, worker_task):
+    if not settings.ALERT_TELEGRAM_ENABLED:
+        return {"status": "disabled"}
+    if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
+        return {"status": "degraded", "reason": "missing_config"}
+    if worker_task is None:
+        return {"status": "degraded", "reason": "worker_not_running"}
+    return {"status": "ok"}
 
 
 @app.post("/v1/predict", response_model=PredictResponse, dependencies=ADMIN_WRITE_DEPENDENCIES)
