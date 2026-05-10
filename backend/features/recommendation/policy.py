@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.schemas import IrrigationDecision, RecAction
+from backend.core.schemas import IrrigationDecision, RecAction
 
 RECOMMENDATION_LATEST_TTL_SECONDS = 600
 RAIN_OVERRIDE_THRESHOLD_MM = 15.0

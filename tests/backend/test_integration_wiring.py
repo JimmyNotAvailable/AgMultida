@@ -23,19 +23,19 @@ from types import SimpleNamespace
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
 from fastapi.testclient import TestClient
 
-from api_gateway.main import app
+from backend.api_gateway.main import app
 from tests.backend.auth_helpers import auth_headers
-from api_gateway.clients.ai_client import LiveAIClient
-from core.config import get_settings
-from api_gateway.clients.decision_client import LiveDecisionClient
-from core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecAction, RecommendRequest
-from core.errors import AgTechError, ErrorCode
+from backend.api_gateway.clients.ai_client import LiveAIClient
+from backend.core.config import get_settings
+from backend.api_gateway.clients.decision_client import LiveDecisionClient
+from backend.core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecAction, RecommendRequest
+from backend.core.errors import AgTechError, ErrorCode
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -140,8 +140,8 @@ class NoopDecisionClient:
 
 
 def install_command_gate_state(prediction: PredictResponse | None):
-    from features.commands.service import CommandSafetyService
-    from features.recommendation.service import DecisionCacheService, RecommendationService
+    from backend.features.commands.service import CommandSafetyService
+    from backend.features.recommendation.service import DecisionCacheService, RecommendationService
 
     settings = get_settings()
     app.state.ai_client = NoopAIClient()

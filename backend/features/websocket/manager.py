@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
-from features.websocket.schemas import RealtimeEvent
+from backend.features.websocket.schemas import RealtimeEvent
 
 
 @dataclass

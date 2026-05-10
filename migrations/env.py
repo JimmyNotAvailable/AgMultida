@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_ROOT = PROJECT_ROOT / 'backend'
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from core.config import get_settings  # noqa: E402
+from backend.core.config import get_settings  # noqa: E402
 
 config = context.config
 if config.config_file_name is not None:

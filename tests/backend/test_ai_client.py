@@ -7,14 +7,14 @@ import anyio
 import httpx
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from api_gateway.clients.ai_client import LiveAIClient
-from core.config import get_settings
-from api_gateway.main import app
+from backend.api_gateway.clients.ai_client import LiveAIClient
+from backend.core.config import get_settings
+from backend.api_gateway.main import app
 from fastapi.testclient import TestClient
-from core.errors import AgTechError
-from core.schemas import PredictRequest
+from backend.core.errors import AgTechError
+from backend.core.schemas import PredictRequest
 
 
 def test_live_ai_client_success_and_header_injection():
@@ -233,7 +233,7 @@ def test_live_ai_client_ready_maps_transport_failure():
 
 def test_live_ai_client_ready_is_stub_for_stub_client():
     async def run() -> None:
-        from api_gateway.clients.ai_client import StubAIClient
+        from backend.api_gateway.clients.ai_client import StubAIClient
 
         ready = await StubAIClient().ready()
         assert ready == {"status": "stub"}

@@ -7,12 +7,12 @@ from pathlib import Path
 
 import anyio
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
-from features.websocket.manager import WebSocketManager
-from features.websocket.redis_subscriber import RedisSubscriber
-from features.websocket.schemas import RealtimeEvent
+from backend.features.websocket.manager import WebSocketManager
+from backend.features.websocket.redis_subscriber import RedisSubscriber
+from backend.features.websocket.schemas import RealtimeEvent
 
 
 class FakeSocket:

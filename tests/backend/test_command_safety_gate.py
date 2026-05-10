@@ -21,14 +21,14 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.config import Settings
-from core.errors import AgTechError
-from core.schemas import ConfidenceFlag, IrrigationCommandRequest, PredictResponse, RecAction
-from features.commands.policy import COMMAND_UNCERTAINTY_THRESHOLD, evaluate_command_safety
-from features.commands.service import CommandSafetyService
-from features.prediction.cache import PredictionCacheEntry, PredictionCacheService
+from backend.core.config import Settings
+from backend.core.errors import AgTechError
+from backend.core.schemas import ConfidenceFlag, IrrigationCommandRequest, PredictResponse, RecAction
+from backend.features.commands.policy import COMMAND_UNCERTAINTY_THRESHOLD, evaluate_command_safety
+from backend.features.commands.service import CommandSafetyService
+from backend.features.prediction.cache import PredictionCacheEntry, PredictionCacheService
 
 
 def make_prediction(**overrides) -> PredictResponse:

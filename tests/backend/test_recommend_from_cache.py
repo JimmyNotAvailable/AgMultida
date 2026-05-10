@@ -17,12 +17,12 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.errors import AgTechError, ErrorCode
-from core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecAction, RecommendFromCacheRequest
-from features.prediction.cache import PredictionCacheService
-from features.recommendation.service import DecisionCacheService, RecommendationService
+from backend.core.errors import AgTechError, ErrorCode
+from backend.core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecAction, RecommendFromCacheRequest
+from backend.features.prediction.cache import PredictionCacheService
+from backend.features.recommendation.service import DecisionCacheService, RecommendationService
 
 
 def make_prediction(**overrides) -> PredictResponse:

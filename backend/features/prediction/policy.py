@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.schemas import ConfidenceFlag, PredictResponse
+from backend.core.schemas import ConfidenceFlag, PredictResponse
 
 PREDICTION_LATEST_TTL_SECONDS = 600
 PREDICTION_BUCKET_TTL_SECONDS = 1800

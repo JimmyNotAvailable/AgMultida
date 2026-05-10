@@ -4,8 +4,8 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from core.schemas import PredictResponse
-from features.prediction.policy import PREDICTION_BUCKET_TTL_SECONDS, PREDICTION_LATEST_TTL_SECONDS, PREDICTION_MEMORY_TTL_SECONDS, prediction_timestamp_bucket
+from backend.core.schemas import PredictResponse
+from backend.features.prediction.policy import PREDICTION_BUCKET_TTL_SECONDS, PREDICTION_LATEST_TTL_SECONDS, PREDICTION_MEMORY_TTL_SECONDS, prediction_timestamp_bucket
 
 
 @dataclass(frozen=True)

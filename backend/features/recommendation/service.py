@@ -5,10 +5,10 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from core.errors import AgTechError, ErrorCode
-from core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecommendFromCacheRequest, RecommendRequest
-from features.prediction.cache import PredictionCacheService
-from features.recommendation.policy import RECOMMENDATION_LATEST_TTL_SECONDS, apply_recommendation_policy
+from backend.core.errors import AgTechError, ErrorCode
+from backend.core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecommendFromCacheRequest, RecommendRequest
+from backend.features.prediction.cache import PredictionCacheService
+from backend.features.recommendation.policy import RECOMMENDATION_LATEST_TTL_SECONDS, apply_recommendation_policy
 
 logger = logging.getLogger("agmultida.recommendation")
 
@@ -124,7 +124,7 @@ class RecommendationService:
         return decision
 
     async def recommend(self, req: RecommendRequest, trace_id: str | None = None, emit_alert: bool = True) -> IrrigationDecision:
-        from decision_engine.main import evaluate_decision
+        from backend.decision_engine.main import evaluate_decision
 
         decision = evaluate_decision(req)
         decision = apply_recommendation_policy(

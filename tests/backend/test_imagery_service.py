@@ -7,11 +7,11 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / 'backend'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
 
-from core.errors import AgTechError, ErrorCode
-from core.imagery import (
+from backend.core.errors import AgTechError, ErrorCode
+from backend.core.imagery import (
     MAX_CLOUD_COVER,
     build_preview_url,
     build_stac_search_payload,
@@ -59,8 +59,8 @@ async def test_get_latest_zone_imagery_uses_fresh_persisted_row(monkeypatch):
     async def fail_search(zone_id: str, polygon: list[list[float]], limit: int = 1):
         raise AssertionError('search should not run for fresh cached row')
 
-    monkeypatch.setattr('core.imagery.try_load_latest_scene_row', fake_latest_row)
-    monkeypatch.setattr('core.imagery.fetch_and_persist_zone_imagery_history', fail_search)
+    monkeypatch.setattr('backend.features.imagery.stac.try_load_latest_scene_row', fake_latest_row)
+    monkeypatch.setattr('backend.features.imagery.stac.fetch_and_persist_zone_imagery_history', fail_search)
 
     scene = await get_latest_zone_imagery('A01', [[105.0, 10.0], [106.0, 10.0], [106.0, 11.0], [105.0, 10.0]])
 
@@ -82,8 +82,8 @@ async def test_get_latest_zone_imagery_returns_stale_fallback_on_upstream_error(
             status_code=502,
         )
 
-    monkeypatch.setattr('core.imagery.try_load_latest_scene_row', fake_latest_row)
-    monkeypatch.setattr('core.imagery.fetch_and_persist_zone_imagery_history', fail_search)
+    monkeypatch.setattr('backend.features.imagery.stac.try_load_latest_scene_row', fake_latest_row)
+    monkeypatch.setattr('backend.features.imagery.stac.fetch_and_persist_zone_imagery_history', fail_search)
 
     scene = await get_latest_zone_imagery('A01', [[105.0, 10.0], [106.0, 10.0], [106.0, 11.0], [105.0, 10.0]])
 
@@ -101,8 +101,8 @@ async def test_get_zone_imagery_history_uses_fresh_persisted_rows(monkeypatch):
     async def fail_fetch(zone_id: str, polygon: list[list[float]], limit: int = 10):
         raise AssertionError('refresh should not run for fresh history rows')
 
-    monkeypatch.setattr('core.imagery.try_load_scene_history_rows', fake_history_rows)
-    monkeypatch.setattr('core.imagery.fetch_and_persist_zone_imagery_history', fail_fetch)
+    monkeypatch.setattr('backend.features.imagery.stac.try_load_scene_history_rows', fake_history_rows)
+    monkeypatch.setattr('backend.features.imagery.stac.fetch_and_persist_zone_imagery_history', fail_fetch)
 
     history = await get_zone_imagery_history('A01', [[105.0, 10.0], [106.0, 10.0], [106.0, 11.0], [105.0, 10.0]], limit=2)
 
@@ -125,8 +125,8 @@ async def test_get_zone_imagery_history_returns_stale_rows_on_upstream_error(mon
             status_code=502,
         )
 
-    monkeypatch.setattr('core.imagery.try_load_scene_history_rows', fake_history_rows)
-    monkeypatch.setattr('core.imagery.fetch_and_persist_zone_imagery_history', fail_fetch)
+    monkeypatch.setattr('backend.features.imagery.stac.try_load_scene_history_rows', fake_history_rows)
+    monkeypatch.setattr('backend.features.imagery.stac.fetch_and_persist_zone_imagery_history', fail_fetch)
 
     history = await get_zone_imagery_history('A01', [[105.0, 10.0], [106.0, 10.0], [106.0, 11.0], [105.0, 10.0]], limit=2)
 
@@ -146,8 +146,8 @@ async def test_get_latest_zone_imagery_raises_when_no_fallback_exists(monkeypatc
             status_code=502,
         )
 
-    monkeypatch.setattr('core.imagery.try_load_latest_scene_row', fake_latest_row)
-    monkeypatch.setattr('core.imagery.fetch_and_persist_zone_imagery_history', fail_search)
+    monkeypatch.setattr('backend.features.imagery.stac.try_load_latest_scene_row', fake_latest_row)
+    monkeypatch.setattr('backend.features.imagery.stac.fetch_and_persist_zone_imagery_history', fail_search)
 
     with pytest.raises(AgTechError) as exc_info:
         await get_latest_zone_imagery('A01', [[105.0, 10.0], [106.0, 10.0], [106.0, 11.0], [105.0, 10.0]])
@@ -257,8 +257,8 @@ async def test_search_sentinel_scenes_uses_imagery_timeout(monkeypatch):
         IMAGERY_TIMEOUT_MS = 2345
         IMAGERY_METADATA_CACHE_TTL_SECONDS = 21600
 
-    monkeypatch.setattr('core.imagery.httpx.AsyncClient', FakeClient)
-    monkeypatch.setattr('core.imagery.get_settings', lambda: FakeSettings())
+    monkeypatch.setattr('backend.features.imagery.stac.httpx.AsyncClient', FakeClient)
+    monkeypatch.setattr('backend.features.imagery.stac.get_settings', lambda: FakeSettings())
 
     await search_sentinel_scenes([[105.0, 10.0], [106.0, 10.0], [106.0, 11.0], [105.0, 10.0]], limit=3)
 

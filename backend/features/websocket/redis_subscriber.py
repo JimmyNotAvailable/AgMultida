@@ -6,8 +6,8 @@ import re
 
 from pydantic import ValidationError
 
-from features.websocket.manager import WebSocketManager
-from features.websocket.schemas import RealtimeEvent
+from backend.features.websocket.manager import WebSocketManager
+from backend.features.websocket.schemas import RealtimeEvent
 
 ZONE_CHANNEL_PATTERN = re.compile(r"^ws:zone:(?P<zone_id>[A-Z]\d{2})$")
 

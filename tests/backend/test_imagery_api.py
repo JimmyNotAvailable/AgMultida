@@ -8,14 +8,16 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / 'backend'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
 
-from api_gateway import main
-from api_gateway.main import app
-from core.imagery_proxy import build_preview_png, clear_preview_cache
-import core.imagery_proxy as imagery_proxy
-from core.schemas import ImageryScene, ImagerySceneCollection
+from backend.api_gateway import main
+from backend.api_gateway.main import app
+from backend.core.imagery_proxy import build_preview_png, clear_preview_cache
+import backend.core.imagery_proxy as imagery_proxy
+import backend.features.zones.router as zones_router_module
+import backend.features.imagery.router as imagery_router_module
+from backend.core.schemas import ImageryScene, ImagerySceneCollection
 from tests.backend.auth_helpers import auth_headers
 
 
@@ -66,7 +68,7 @@ async def fake_build_preview_placeholder(scene: ImageryScene, bbox: tuple[float,
 
 
 def test_zone_imagery_latest_returns_scene(monkeypatch):
-    monkeypatch.setattr(main, 'get_latest_zone_imagery_for_api', fake_latest)
+    monkeypatch.setattr(zones_router_module, 'get_latest_zone_imagery_for_api', fake_latest)
 
     with TestClient(app) as client:
         response = client.get('/v1/zones/A01/imagery/latest', headers=auth_headers('viewer'))
@@ -82,7 +84,7 @@ def test_zone_imagery_latest_returns_scene(monkeypatch):
 
 
 def test_zone_imagery_history_returns_limited_scenes(monkeypatch):
-    monkeypatch.setattr(main, 'get_zone_imagery_history_for_api', fake_history)
+    monkeypatch.setattr(zones_router_module, 'get_zone_imagery_history_for_api', fake_history)
 
     with TestClient(app) as client:
         response = client.get('/v1/zones/A01/imagery/history?limit=2', headers=auth_headers('viewer'))
@@ -95,8 +97,8 @@ def test_zone_imagery_history_returns_limited_scenes(monkeypatch):
 
 
 def test_imagery_preview_uses_private_cache_headers(monkeypatch):
-    monkeypatch.setattr(main, 'get_scene_for_preview', fake_scene_for_preview)
-    monkeypatch.setattr(main, 'build_preview_png', fake_build_preview_png)
+    monkeypatch.setattr(imagery_router_module, 'get_scene_for_preview', fake_scene_for_preview)
+    monkeypatch.setattr(imagery_router_module, 'build_preview_png', fake_build_preview_png)
 
     with TestClient(app) as client:
         response = client.get('/v1/imagery/preview/S2A_A01_20260508?mode=rgb', headers=auth_headers('viewer'))
@@ -109,8 +111,8 @@ def test_imagery_preview_uses_private_cache_headers(monkeypatch):
 
 
 def test_imagery_preview_marks_placeholder_source(monkeypatch):
-    monkeypatch.setattr(main, 'get_scene_for_preview', fake_scene_for_preview)
-    monkeypatch.setattr(main, 'build_preview_png', fake_build_preview_placeholder)
+    monkeypatch.setattr(imagery_router_module, 'get_scene_for_preview', fake_scene_for_preview)
+    monkeypatch.setattr(imagery_router_module, 'build_preview_png', fake_build_preview_placeholder)
 
     with TestClient(app) as client:
         response = client.get('/v1/imagery/preview/S2A_A01_20260508?mode=rgb', headers=auth_headers('viewer'))

@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 from uuid import uuid4
 
-from core.errors import AgTechError, ErrorCode
-from core.schemas import PredictRequest, PredictResponse
-from features.prediction.cache import PredictionCacheService
-from features.prediction.policy import apply_prediction_policy, build_prediction_source
+from backend.core.errors import AgTechError, ErrorCode
+from backend.core.schemas import PredictRequest, PredictResponse
+from backend.features.prediction.cache import PredictionCacheService
+from backend.features.prediction.policy import apply_prediction_policy, build_prediction_source
 
 logger = logging.getLogger("agmultida.prediction")
 

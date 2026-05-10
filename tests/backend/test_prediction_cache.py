@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / 'backend'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.schemas import ConfidenceFlag, PredictResponse
-from features.prediction.cache import PredictionCacheService
-from features.prediction.policy import apply_prediction_policy
+from backend.core.schemas import ConfidenceFlag, PredictResponse
+from backend.features.prediction.cache import PredictionCacheService
+from backend.features.prediction.policy import apply_prediction_policy
 
 
 class FailingRedis:

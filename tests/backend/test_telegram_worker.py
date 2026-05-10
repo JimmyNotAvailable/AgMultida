@@ -9,12 +9,12 @@ import anyio
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
-from api_gateway.main import app
-from core.config import get_settings
-from features.alerts.telegram_worker import TelegramWorker, TelegramWorkerConfig
+from backend.api_gateway.main import app
+from backend.core.config import get_settings
+from backend.features.alerts.telegram_worker import TelegramWorker, TelegramWorkerConfig
 
 
 class FakeRedis:

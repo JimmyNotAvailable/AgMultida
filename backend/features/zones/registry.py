@@ -4,10 +4,10 @@ import csv
 import json
 from pathlib import Path
 
-from core.geospatial import calculate_centroid
-from core.schemas import ZoneRegistryEntry
-from features.zones.schemas import ZoneBounds, ZoneRegistryItem
-from platform_layer.cache import TieredCache, json_decoder, json_encoder
+from backend.core.geospatial import calculate_centroid
+from backend.core.schemas import ZoneRegistryEntry
+from backend.features.zones.schemas import ZoneBounds, ZoneRegistryItem
+from backend.platform_layer.cache import TieredCache, json_decoder, json_encoder
 
 REGISTRY_CACHE_KEY = "registry"
 

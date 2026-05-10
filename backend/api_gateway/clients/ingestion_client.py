@@ -5,8 +5,8 @@ from typing import Protocol, runtime_checkable
 import httpx
 from pydantic import ValidationError
 
-from core.errors import AgTechError, ErrorCode
-from core.schemas import TelemetryIngestRequest, TelemetryIngestResponse
+from backend.core.errors import AgTechError, ErrorCode
+from backend.core.schemas import TelemetryIngestRequest, TelemetryIngestResponse
 
 
 @runtime_checkable

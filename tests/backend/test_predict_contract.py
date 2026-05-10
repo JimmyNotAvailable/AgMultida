@@ -13,16 +13,16 @@ from pathlib import Path
 import pytest
 
 # JUN: Ensure backend root is importable
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Set required env var before importing config-dependent modules
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
 from fastapi.testclient import TestClient
 
-from api_gateway.main import app
+from backend.api_gateway.main import app
 from tests.backend.auth_helpers import auth_headers
-from core.schemas import PredictResponse, IrrigationDecision, HealthResponse
+from backend.core.schemas import PredictResponse, IrrigationDecision, HealthResponse
 
 
 @pytest.fixture

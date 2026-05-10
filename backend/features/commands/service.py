@@ -3,11 +3,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from core.config import Settings
-from core.errors import AgTechError
-from core.schemas import IrrigationCommandRequest
-from features.commands.policy import evaluate_command_safety
-from features.prediction.cache import PredictionCacheService
+from backend.core.config import Settings
+from backend.core.errors import AgTechError
+from backend.core.schemas import IrrigationCommandRequest
+from backend.features.commands.policy import evaluate_command_safety
+from backend.features.prediction.cache import PredictionCacheService
 
 logger = logging.getLogger("agmultida.commands")
 

@@ -8,9 +8,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Awaitable, Callable
 from uuid import uuid4
 
-from core.schemas import ZoneStatusResponse
-from features.prediction.cache import PredictionCacheService
-from features.recommendation.service import DecisionCacheService
+from backend.core.schemas import ZoneStatusResponse
+from backend.features.prediction.cache import PredictionCacheService
+from backend.features.recommendation.service import DecisionCacheService
 
 ZONE_STATUS_TTL_SECONDS = 60
 

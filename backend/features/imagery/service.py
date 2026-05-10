@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from features.imagery.circuit_breaker import CircuitBreaker
-from features.imagery.persistence import PreviewPersistence
-from features.imagery.schemas import ImageryMetadata
+from backend.features.imagery.circuit_breaker import CircuitBreaker
+from backend.features.imagery.persistence import PreviewPersistence
+from backend.features.imagery.schemas import ImageryMetadata
 
 
 class ImageryService:

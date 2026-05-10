@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-from core.schemas import ZoneRegistryEntry
+from backend.core.schemas import ZoneRegistryEntry
 
 
 class ZoneBounds(BaseModel):

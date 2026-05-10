@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.schemas import AlertRecord
+from backend.core.schemas import AlertRecord
 
 
 class AlertEvaluationInput(BaseModel):

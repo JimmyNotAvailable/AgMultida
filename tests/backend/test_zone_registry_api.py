@@ -6,10 +6,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / 'backend'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
 
-from api_gateway.main import app
+from backend.api_gateway.main import app
 from tests.backend.auth_helpers import auth_headers
 
 

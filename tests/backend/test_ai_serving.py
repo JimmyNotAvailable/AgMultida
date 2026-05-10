@@ -10,11 +10,11 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
-from ai_serving.main import ManifestSampleStore, app
-from core.config import get_settings
+from backend.ai_serving.main import ManifestSampleStore, app
+from backend.core.config import get_settings
 
 
 @pytest.fixture

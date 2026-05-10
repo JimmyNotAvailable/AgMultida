@@ -119,7 +119,7 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    command: uvicorn ai_serving.main:app --host 0.0.0.0 --port 8001
+    command: uvicorn backend.ai_serving.main:app --host 0.0.0.0 --port 8001
     healthcheck:
       <<: *backend-health
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz', timeout=2)"]
@@ -134,7 +134,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    command: uvicorn decision_engine.main:app --host 0.0.0.0 --port 8002
+    command: uvicorn backend.decision_engine.main:app --host 0.0.0.0 --port 8002
     healthcheck:
       <<: *backend-health
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/healthz', timeout=2)"]
@@ -152,7 +152,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn ingestion_service.main:app --host 0.0.0.0 --port 8003
+    command: uvicorn backend.ingestion_service.main:app --host 0.0.0.0 --port 8003
     ports:
       - "${INGESTION_SERVICE_PORT:-8003}:8003"
     healthcheck:
@@ -185,7 +185,7 @@ services:
         condition: service_healthy
       decision-engine:
         condition: service_healthy
-    command: uvicorn api_gateway.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn backend.api_gateway.main:app --host 0.0.0.0 --port 8000
     healthcheck:
       <<: *backend-health
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/healthz', timeout=2)"]

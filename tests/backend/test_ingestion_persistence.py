@@ -6,11 +6,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / 'backend'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
 os.environ.setdefault('INTERNAL_API_KEY', 'test-internal-key-123456')
 
-from ingestion_service.main import app  # noqa: E402
+from backend.ingestion_service.main import app  # noqa: E402
 from tests.contract_fixtures import VALID_TELEMETRY_REQUEST  # noqa: E402
 
 

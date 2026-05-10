@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
-from core.schemas import AlertRecord
-from features.websocket.schemas import RealtimeEvent
+from backend.core.schemas import AlertRecord
+from backend.features.websocket.schemas import RealtimeEvent
 
 router = APIRouter(tags=["alerts"])
 

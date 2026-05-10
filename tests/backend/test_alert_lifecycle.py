@@ -9,13 +9,13 @@ import anyio
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
-from api_gateway.main import app
-from core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecAction
-from features.alerts.lifecycle import ALERT_STATUS_ACKNOWLEDGED
-from features.alerts.service import AlertService
+from backend.api_gateway.main import app
+from backend.core.schemas import ConfidenceFlag, IrrigationDecision, PredictResponse, RecAction
+from backend.features.alerts.lifecycle import ALERT_STATUS_ACKNOWLEDGED
+from backend.features.alerts.service import AlertService
 from tests.backend.auth_helpers import auth_headers
 
 

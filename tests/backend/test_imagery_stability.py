@@ -6,12 +6,12 @@ from pathlib import Path
 
 import anyio
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
-from features.imagery.circuit_breaker import CircuitBreaker
-from features.imagery.persistence import PreviewPersistence
-from features.imagery.service import ImageryService
+from backend.features.imagery.circuit_breaker import CircuitBreaker
+from backend.features.imagery.persistence import PreviewPersistence
+from backend.features.imagery.service import ImageryService
 
 
 class FakeRedis:

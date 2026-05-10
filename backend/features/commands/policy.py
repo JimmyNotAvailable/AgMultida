@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from core.errors import ErrorCode
-from features.prediction.cache import PredictionCacheEntry
-from features.prediction.policy import PREDICTION_LATEST_TTL_SECONDS
+from backend.core.errors import ErrorCode
+from backend.features.prediction.cache import PredictionCacheEntry
+from backend.features.prediction.policy import PREDICTION_LATEST_TTL_SECONDS
 
 COMMAND_UNCERTAINTY_THRESHOLD = 0.30
 

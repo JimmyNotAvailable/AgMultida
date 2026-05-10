@@ -15,14 +15,14 @@ from typing import Protocol, runtime_checkable
 import httpx
 from pydantic import ValidationError
 
-from features.prediction.policy import PREDICTION_MODALITY_UNCERTAINTY_PENALTY, PREDICTION_TIMEOUT_DEGRADE_MS
+from backend.features.prediction.policy import PREDICTION_MODALITY_UNCERTAINTY_PENALTY, PREDICTION_TIMEOUT_DEGRADE_MS
 
-from core.schemas import (
+from backend.core.schemas import (
     ConfidenceFlag,
     PredictRequest,
     PredictResponse,
 )
-from core.errors import AgTechError, ErrorCode
+from backend.core.errors import AgTechError, ErrorCode
 
 
 @runtime_checkable

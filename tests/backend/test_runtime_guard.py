@@ -21,15 +21,15 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 
 from fastapi.testclient import TestClient
 
-from api_gateway.main import app
-from core.config import Settings, get_settings
-from core.errors import AgTechError, ErrorCode, ErrorResponse, mask_internal_exception
+from backend.api_gateway.main import app
+from backend.core.config import Settings, get_settings
+from backend.core.errors import AgTechError, ErrorCode, ErrorResponse, mask_internal_exception
 from tests.backend.auth_helpers import auth_headers
 
 

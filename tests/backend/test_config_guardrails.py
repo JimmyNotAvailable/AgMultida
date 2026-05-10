@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / 'backend'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.config import get_settings
+from backend.core.config import get_settings
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 ENV_EXAMPLE = PROJECT_ROOT / '.env.example'

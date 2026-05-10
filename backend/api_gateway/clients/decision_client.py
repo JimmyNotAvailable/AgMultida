@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from core.schemas import (
+from backend.core.schemas import (
     IrrigationDecision,
     RecAction,
     RecommendRequest,
@@ -50,5 +50,5 @@ class LiveDecisionClient:
     """
 
     def recommend(self, req: RecommendRequest) -> IrrigationDecision:
-        from decision_engine.main import evaluate_decision
+        from backend.decision_engine.main import evaluate_decision
         return evaluate_decision(req)

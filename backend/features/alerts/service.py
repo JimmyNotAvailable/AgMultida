@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from core.errors import AgTechError, ErrorCode
-from core.schemas import AlertRecord, IrrigationDecision, PredictResponse, RecAction
-from features.alerts.lifecycle import ALERT_STATUS_ACKNOWLEDGED, ALERT_STATUS_OPEN
-from features.alerts.stream import AlertStream
+from backend.core.errors import AgTechError, ErrorCode
+from backend.core.schemas import AlertRecord, IrrigationDecision, PredictResponse, RecAction
+from backend.features.alerts.lifecycle import ALERT_STATUS_ACKNOWLEDGED, ALERT_STATUS_OPEN
+from backend.features.alerts.stream import AlertStream
 
 logger = logging.getLogger("agmultida.alerts")
 

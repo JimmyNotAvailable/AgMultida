@@ -4,7 +4,6 @@ from __future__ import annotations
 import ast
 import hmac
 import logging
-import sys
 from uuid import uuid4
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -16,16 +15,14 @@ import pandas as pd
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 from ai_system.calibration import StressCalibrator
 from ai_system.mc_dropout_wrapper import AIInferencePipeline
 from ai_system.audit import AuditLogger
 from ai_system.xai_explainer import explain_attention
-from ai_serving.onnx_wrapper import OnnxInferenceWrapper
-from core.config import get_settings
-from core.errors import AgTechError, ErrorCode, mask_internal_exception
-from core.schemas import ConfidenceFlag, HealthResponse, PredictRequest, PredictResponse
+from backend.ai_serving.onnx_wrapper import OnnxInferenceWrapper
+from backend.core.config import get_settings
+from backend.core.errors import AgTechError, ErrorCode, mask_internal_exception
+from backend.core.schemas import ConfidenceFlag, HealthResponse, PredictRequest, PredictResponse
 
 try:
     import onnxruntime as ort
