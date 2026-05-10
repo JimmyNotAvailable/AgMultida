@@ -34,7 +34,7 @@ export function ImageryTimeline({ scenes, selectedSceneId, isLoading, isError, o
             onClick={() => onSelect(scene)}
             data-testid="imagery-timeline-scene"
           >
-            {previewUrl ? <img src={previewUrl} alt={`Scene ${index + 1}`} /> : <span className="timeline-empty" />}
+            {previewUrl ? <img src={previewUrl} alt={`Scene ${index + 1}`} loading="lazy" /> : <span className="timeline-empty" />}
             <strong>{scene.acquisition_time ? new Date(scene.acquisition_time).toLocaleDateString() : `Scene ${index + 1}`}</strong>
             {scene.stale ? <span className="timeline-stale">Stale</span> : null}
           </button>
