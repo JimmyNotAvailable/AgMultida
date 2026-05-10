@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DataFusionPanel } from '../../../components/dashboard/DataFusionPanel'
 import { ImageryTimeline } from '../../../components/dashboard/ImageryTimeline'
@@ -7,12 +7,13 @@ import { ZoneMap } from '../../../components/dashboard/ZoneMap'
 import { ZoneOverlay } from '../../../components/dashboard/ZoneOverlay'
 import { LanguageToggle } from '../../../components/shared/LanguageToggle'
 import { ThemeToggle } from '../../../components/shared/ThemeToggle'
-import { createCommandWithAck, getZoneAlerts, getZoneImageryHistorySafe, getZoneImageryLatestSafe, getZoneStatus, isLocalDemoResponse, recommend, recommendFromCache } from '../../../lib/api'
+import { createCommandWithAck, isLocalDemoResponse, recommend, recommendFromCache } from '../../../lib/api'
 import { ApiError, type ApiErrorBody, type ImageryScene, type IrrigationDecision, type PredictResponse, type ZoneStatusResponse } from '../../../lib/api/types'
 import { useLanguage } from '../../../lib/i18n/useLanguage'
 import { DegradationBanner } from '../components/DegradationBanner'
 import { buildFallbackPrediction, getZoneById, zones } from '../dashboardData'
 import { useDashboardZones } from '../dashboardStore'
+import { isZoneStatusStale, useDashboardQueries } from '../hooks/useDashboardQueries'
 import { getUncertaintyBadgeColor, usePredictionFlow } from '../hooks/usePredictionFlow'
 
 const DEFAULT_ZONE_ID = 'A01'
@@ -41,19 +42,7 @@ export function DashboardPage() {
     }
   }, [dashboardZones, selectedZoneId])
 
-  const imageryLatestQuery = useQuery({
-    queryKey: ['dashboard-zone-imagery-latest', selectedZoneId],
-    queryFn: () => getZoneImageryLatestSafe(selectedZoneId),
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
-
-  const imageryHistoryQuery = useQuery({
-    queryKey: ['dashboard-zone-imagery-history', selectedZoneId],
-    queryFn: () => getZoneImageryHistorySafe(selectedZoneId, 10),
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+  const { statusQuery: zoneStatusQuery, alertsQuery: zoneAlertsQuery, imageryLatestQuery, imageryHistoryQuery } = useDashboardQueries(selectedZoneId)
 
   const currentImagery = imageryLatestQuery.data?.zone_id === selectedZoneId ? imageryLatestQuery.data : null
   const imageryHistory = imageryHistoryQuery.data?.zone_id === selectedZoneId ? imageryHistoryQuery.data : null
@@ -67,22 +56,17 @@ export function DashboardPage() {
     window.history.replaceState({}, '', url)
   }, [selectedZoneId])
 
-  const zoneStatusQuery = useQuery({
-    queryKey: ['dashboard-zone-status', selectedZoneId],
-    queryFn: () => getZoneStatus(selectedZoneId),
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+  const isStatusStale = isZoneStatusStale(zoneStatusQuery.data?.updated_at)
 
-  const zoneAlertsQuery = useQuery({
-    queryKey: ['dashboard-zone-alerts', selectedZoneId],
-    queryFn: async () => (await getZoneAlerts(selectedZoneId)).alerts,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+  const zoneStatusPrompt = zoneStatusQuery.data?.latest_prediction ? null : 'Run prediction to populate model output.'
 
   const predictMutation = usePredictionFlow({ zoneId: selectedZoneId, timestamp: DEFAULT_TIMESTAMP })
+
+  useEffect(() => {
+    if (predictMutation.isSuccess) {
+      void Promise.all([zoneStatusQuery.refetch(), zoneAlertsQuery.refetch()])
+    }
+  }, [predictMutation.isSuccess, zoneAlertsQuery, zoneStatusQuery])
 
   useEffect(() => {
     if (predictMutation.status !== 'idle') {
@@ -119,6 +103,9 @@ export function DashboardPage() {
       })
     },
     onMutate: () => setLastAction('recommend'),
+    onSuccess: async () => {
+      await Promise.all([zoneStatusQuery.refetch(), zoneAlertsQuery.refetch()])
+    },
   })
 
   const [ackOverride, setAckOverride] = useState(false)
@@ -301,7 +288,11 @@ export function DashboardPage() {
             rain3h={typeof currentStatus?.latest_telemetry?.rain_3h === 'number' ? currentStatus.latest_telemetry.rain_3h : null}
             cloudCover={displayImagery?.cloud_cover ?? null}
             source={displayImagery?.source ?? null}
+            isStale={isStatusStale}
+            lastUpdated={currentStatus?.updated_at ?? null}
+            hasPrediction={currentStatus?.latest_prediction != null}
           />
+          {zoneStatusPrompt ? <article className="data-card degraded-banner-card"><strong>{zoneStatusPrompt}</strong></article> : null}
 
           <div className="result-grid">
             <DegradationBanner prediction={currentPrediction} />

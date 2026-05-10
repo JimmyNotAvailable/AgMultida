@@ -54,3 +54,10 @@ data/**
 logs/
 logs/*
 logs/**
+
+# Frontend generated cache
+frontend/node_modules/.vite/
+frontend/tsconfig.tsbuildinfo
+frontend/playwright-report.json
+frontend/playwright-results/
+frontend/test-results/

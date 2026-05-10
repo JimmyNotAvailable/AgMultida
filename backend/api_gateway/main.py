@@ -35,6 +35,7 @@ from features.recommendation.router import router as recommendation_router
 from features.recommendation.service import DecisionCacheService, RecommendationService
 from features.zones.registry import ZoneRegistryService
 from features.zones.router import router as zones_router
+from features.zones.status_service import ZoneStatusService
 from core.geospatial import calculate_centroid
 from core.imagery import get_latest_zone_imagery_for_api, get_scene_for_preview, get_zone_imagery_history_for_api
 from core.imagery_proxy import build_preview_cache_headers, build_preview_png
@@ -153,6 +154,7 @@ async def lifespan(application: FastAPI):
     application.state.prediction_service = PredictionService(application.state.prediction_cache)
     application.state.decision_cache = DecisionCacheService(application.state.prediction_cache._redis_client)
     application.state.recommendation_service = RecommendationService(application.state.prediction_cache, application.state.decision_cache)
+    application.state.zone_status_aggregate = ZoneStatusService(application.state.prediction_cache, application.state.decision_cache, application.state.prediction_cache._redis_client)
     application.state.command_safety_service = CommandSafetyService(application.state.prediction_cache, settings)
     application.state.alert_repository = AlertRepository()
     yield
@@ -184,6 +186,7 @@ app.state.prediction_cache = PredictionCacheService()
 app.state.prediction_service = PredictionService(app.state.prediction_cache)
 app.state.decision_cache = DecisionCacheService()
 app.state.recommendation_service = RecommendationService(app.state.prediction_cache, app.state.decision_cache)
+app.state.zone_status_aggregate = ZoneStatusService(app.state.prediction_cache, app.state.decision_cache)
 app.state.command_safety_service = CommandSafetyService(app.state.prediction_cache, get_settings())
 app.state.alert_repository = AlertRepository()
 
@@ -334,6 +337,7 @@ async def predict(req: PredictRequest, request: Request):
     prediction = await request.app.state.ai_client.predict(req)
     prediction = await request.app.state.prediction_service.complete_prediction(req, prediction)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
+    await request.app.state.zone_status_aggregate.invalidate(req.zone_id)
     return prediction
 
 
@@ -344,6 +348,7 @@ async def recommend(req: RecommendRequest, request: Request):
     else:
         decision = await request.app.state.recommendation_service.recommend(req)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
+    await request.app.state.zone_status_aggregate.invalidate(req.zone_id)
     return decision
 
 
@@ -351,6 +356,7 @@ async def recommend(req: RecommendRequest, request: Request):
 async def ingest_telemetry(req: TelemetryIngestRequest, request: Request):
     response = await request.app.state.ingestion_client.ingest(req)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
+    await request.app.state.zone_status_aggregate.invalidate(req.zone_id)
     return response
 
 
@@ -358,6 +364,7 @@ async def ingest_telemetry(req: TelemetryIngestRequest, request: Request):
 async def create_command(req: IrrigationCommandRequest, request: Request, ack: bool = Query(default=False)):
     await request.app.state.command_safety_service.ensure_allowed(req, ack_override=ack)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
+    await request.app.state.zone_status_aggregate.invalidate(req.zone_id)
     return IrrigationCommandResponse(
         command_id=f"cmd_{uuid4().hex[:8]}",
         zone_id=req.zone_id,
@@ -376,22 +383,12 @@ async def zone_weather_latest(zone_id: str = RoutePath(pattern=r"^[A-Z]\d{2}$"))
 
 @app.get("/v1/zones/{zone_id}/status", response_model=ZoneStatusResponse, dependencies=ADMIN_READ_DEPENDENCIES)
 async def zone_status(request: Request, zone_id: str = RoutePath(pattern=r"^[A-Z]\d{2}$")):
-    cached = request.app.state.zone_status_cache.get(zone_id)
-    if cached is not None:
-        return cached
+    async def build_base_status() -> ZoneStatusResponse:
+        zone_feature = load_zone_feature(zone_id)
+        weather = await fetch_weather_for_zone(zone_id, zone_feature["geometry"]["coordinates"][0])
+        return build_zone_status(zone_id=zone_id, weather=weather)
 
-    zone_feature = load_zone_feature(zone_id)
-    weather = await fetch_weather_for_zone(zone_id, zone_feature["geometry"]["coordinates"][0])
-    status = build_zone_status(zone_id=zone_id, weather=weather)
-    prediction_cache_entry = await request.app.state.prediction_cache.get_latest(zone_id)
-    decision_cache_entry = await request.app.state.decision_cache.get_latest(zone_id)
-    updates = {}
-    if prediction_cache_entry is not None:
-        updates["latest_prediction"] = prediction_cache_entry.response
-    if decision_cache_entry is not None:
-        updates["latest_decision"] = decision_cache_entry.decision
-    if updates:
-        status = status.model_copy(update=updates)
+    status = await request.app.state.zone_status_aggregate.get_or_build(zone_id, build_base_status)
     return request.app.state.zone_status_cache.set(zone_id, status)
 
 

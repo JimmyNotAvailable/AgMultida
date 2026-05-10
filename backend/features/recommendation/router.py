@@ -11,4 +11,5 @@ router = APIRouter(tags=["recommendation"])
 async def recommend_from_cache(req: RecommendFromCacheRequest, request: Request):
     decision = await request.app.state.recommendation_service.recommend_from_cache(req)
     request.app.state.zone_status_cache.invalidate(req.zone_id)
+    await request.app.state.zone_status_aggregate.invalidate(req.zone_id)
     return decision
