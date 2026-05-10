@@ -67,3 +67,45 @@ test('clicking alert pans map to zone', () => {
 
   expect(onSelectZone).toHaveBeenCalledWith('A01')
 })
+
+test('severity class maps to correct CSS class', () => {
+  const criticalAlert: AlertRecord = { ...baseAlert, alert_id: 'a-crit', severity: 'critical' }
+  const watchAlert: AlertRecord = { ...baseAlert, alert_id: 'a-watch', severity: 'watch' }
+  renderFeed({ alerts: [criticalAlert, watchAlert] })
+
+  const articles = screen.getAllByRole('article')
+  expect(articles[0].className).toContain('alert-critical')
+  expect(articles[1].className).toContain('alert-watch')
+})
+
+test('acknowledged alert hides acknowledge button', () => {
+  const ackedAlert: AlertRecord = { ...baseAlert, acknowledged: true }
+  renderFeed({ alerts: [ackedAlert] })
+
+  expect(screen.queryByRole('button', { name: /Acknowledge/ })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Pan map to A01' })).toBeTruthy()
+})
+
+test('acknowledge button disables during mutation', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}))
+  renderFeed({ alerts: [baseAlert] })
+
+  const btn = screen.getByRole('button', { name: 'Acknowledge alert alert-1' })
+  fireEvent.click(btn)
+
+  await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(true))
+})
+
+test('multiple alerts render in order', () => {
+  const alerts: AlertRecord[] = [
+    { ...baseAlert, alert_id: 'a1', message: 'First alert' },
+    { ...baseAlert, alert_id: 'a2', message: 'Second alert' },
+    { ...baseAlert, alert_id: 'a3', message: 'Third alert' },
+  ]
+  renderFeed({ alerts })
+
+  const articles = screen.getAllByRole('article')
+  expect(articles).toHaveLength(3)
+  expect(articles[0].textContent).toContain('First alert')
+  expect(articles[2].textContent).toContain('Third alert')
+})
