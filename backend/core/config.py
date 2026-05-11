@@ -12,6 +12,22 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from functools import lru_cache
+from pathlib import Path
+
+
+def load_env_file() -> None:
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+load_env_file()
 
 
 @dataclass(frozen=True)
@@ -23,16 +39,39 @@ class Settings:
     JWT_EXPIRY_MINUTES: int = field(
         default_factory=lambda: int(os.getenv("JWT_EXPIRY_MINUTES", os.getenv("JWT_EXPIRE_MINUTES", "60"))),
     )
+    JWT_REFRESH_EXPIRY_MINUTES: int = field(
+        default_factory=lambda: int(os.getenv("JWT_REFRESH_EXPIRY_MINUTES", "10080")),
+    )
     JWT_ISSUER: str = field(default_factory=lambda: os.getenv("JWT_ISSUER", "agmultida"))
     JWT_AUDIENCE: str = field(default_factory=lambda: os.getenv("JWT_AUDIENCE", "agmultida-admin"))
     AUTH_REQUIRED: bool = field(
         default_factory=lambda: os.getenv("AUTH_REQUIRED", "true").lower() == "true",
     )
+    ADMIN_USERNAME: str = field(default_factory=lambda: os.getenv("ADMIN_USERNAME", ""))
+    ADMIN_PASSWORD: str = field(default_factory=lambda: os.getenv("ADMIN_PASSWORD", ""))
     ADMIN_RATE_LIMIT_COUNT: int = field(
         default_factory=lambda: int(os.getenv("ADMIN_RATE_LIMIT_COUNT", "60")),
     )
     ADMIN_RATE_LIMIT_WINDOW_SECONDS: int = field(
         default_factory=lambda: int(os.getenv("ADMIN_RATE_LIMIT_WINDOW_SECONDS", "60")),
+    )
+    AUTH_RATE_LIMIT_COUNT: int = field(
+        default_factory=lambda: int(os.getenv("AUTH_RATE_LIMIT_COUNT", "10")),
+    )
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: int = field(
+        default_factory=lambda: int(os.getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS", "60")),
+    )
+    PREDICT_RATE_LIMIT_COUNT: int = field(
+        default_factory=lambda: int(os.getenv("PREDICT_RATE_LIMIT_COUNT", "30")),
+    )
+    PREDICT_RATE_LIMIT_WINDOW_SECONDS: int = field(
+        default_factory=lambda: int(os.getenv("PREDICT_RATE_LIMIT_WINDOW_SECONDS", "60")),
+    )
+    RECOMMEND_RATE_LIMIT_COUNT: int = field(
+        default_factory=lambda: int(os.getenv("RECOMMEND_RATE_LIMIT_COUNT", "30")),
+    )
+    RECOMMEND_RATE_LIMIT_WINDOW_SECONDS: int = field(
+        default_factory=lambda: int(os.getenv("RECOMMEND_RATE_LIMIT_WINDOW_SECONDS", "60")),
     )
     RATE_LIMIT_BACKEND: str = field(
         default_factory=lambda: os.getenv("RATE_LIMIT_BACKEND", "memory"),
@@ -44,7 +83,7 @@ class Settings:
         default_factory=lambda: os.getenv("RATE_LIMIT_NAMESPACE", "agmultida"),
     )
     CORS_ORIGINS: tuple[str, ...] = field(
-        default_factory=lambda: tuple(origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if origin.strip()),
+        default_factory=lambda: tuple(origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080").split(",") if origin.strip()),
     )
     ENABLE_HSTS: bool = field(
         default_factory=lambda: os.getenv("ENABLE_HSTS", "false").lower() == "true",
@@ -53,7 +92,10 @@ class Settings:
         default_factory=lambda: tuple(host.strip() for host in os.getenv("TRUSTED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if host.strip()),
     )
     WS_REQUIRE_AUTH: bool = field(
-        default_factory=lambda: os.getenv("WS_REQUIRE_AUTH", "true").lower() == "true",
+        default_factory=lambda: os.getenv(
+            "WS_REQUIRE_AUTH",
+            "false" if os.getenv("APP_ENV", "development") == "development" else "true",
+        ).lower() == "true",
     )
     LOG_LEVEL: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
     ENV: str = field(default_factory=lambda: os.getenv("APP_ENV", "development"))
@@ -146,6 +188,15 @@ class Settings:
     IMAGERY_TIMEOUT_MS: int = field(
         default_factory=lambda: int(os.getenv("IMAGERY_TIMEOUT_MS", "1500")),
     )
+    STAC_API_BASE_URL: str = field(
+        default_factory=lambda: os.getenv("STAC_API_BASE_URL", "https://earth-search.aws.element84.com/v1"),
+    )
+    IMAGERY_POLL_INTERVAL_SECONDS: int = field(
+        default_factory=lambda: int(os.getenv("IMAGERY_POLL_INTERVAL_SECONDS", "21600")),
+    )
+    SENTINEL_POLL_ZONE_DELAY_SECONDS: float = field(
+        default_factory=lambda: float(os.getenv("SENTINEL_POLL_ZONE_DELAY_SECONDS", "2.0")),
+    )
     IMAGERY_METADATA_CACHE_TTL_SECONDS: int = field(
         default_factory=lambda: int(os.getenv("IMAGERY_METADATA_CACHE_TTL_SECONDS", "21600")),
     )
@@ -153,6 +204,9 @@ class Settings:
         default_factory=lambda: int(os.getenv("ZONE_STATUS_CACHE_TTL_SECONDS", "300")),
     )
     REDIS_URL: str = field(default_factory=lambda: os.getenv("REDIS_URL", ""))
+    AGROMONITORING_API_KEY: str = field(
+        default_factory=lambda: os.getenv("AGROMONITORING_API_KEY", ""),
+    )
     DEV_AUTH_BYPASS_ROLE: str = field(
         default_factory=lambda: os.getenv("DEV_AUTH_BYPASS_ROLE", "viewer"),
     )
@@ -203,10 +257,24 @@ class Settings:
             raise RuntimeError("DB_POOL_MAX_SIZE must be >= 1")
         if self.DB_POOL_MIN_SIZE > self.DB_POOL_MAX_SIZE:
             raise RuntimeError("DB_POOL_MIN_SIZE must be <= DB_POOL_MAX_SIZE")
+        if self.JWT_REFRESH_EXPIRY_MINUTES < 1:
+            raise RuntimeError("JWT_REFRESH_EXPIRY_MINUTES must be >= 1")
+        if self.ENV == "production" and self.ADMIN_PASSWORD == "admin123@":
+            raise RuntimeError("ADMIN_PASSWORD must not use the development default in production")
+        if not self.ADMIN_USERNAME:
+            raise RuntimeError("ADMIN_USERNAME must be set")
+        if not self.ADMIN_PASSWORD:
+            raise RuntimeError("ADMIN_PASSWORD must be set")
         if self.WEATHER_TIMEOUT_MS < 1:
             raise RuntimeError("WEATHER_TIMEOUT_MS must be >= 1")
         if self.IMAGERY_TIMEOUT_MS < 1:
             raise RuntimeError("IMAGERY_TIMEOUT_MS must be >= 1")
+        if not self.STAC_API_BASE_URL:
+            raise RuntimeError("STAC_API_BASE_URL must be set")
+        if self.IMAGERY_POLL_INTERVAL_SECONDS < 0:
+            raise RuntimeError("IMAGERY_POLL_INTERVAL_SECONDS must be >= 0")
+        if self.SENTINEL_POLL_ZONE_DELAY_SECONDS < 0:
+            raise RuntimeError("SENTINEL_POLL_ZONE_DELAY_SECONDS must be >= 0")
         if self.WEATHER_CACHE_TTL_SECONDS < 1:
             raise RuntimeError("WEATHER_CACHE_TTL_SECONDS must be >= 1")
         if self.IMAGERY_METADATA_CACHE_TTL_SECONDS < 1:

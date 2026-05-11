@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
+os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production-32b')
 
 from backend.api_gateway import main
 from backend.api_gateway.main import app
@@ -94,6 +94,16 @@ def test_zone_imagery_history_returns_limited_scenes(monkeypatch):
     assert body['zone_id'] == 'A01'
     assert len(body['scenes']) == 2
     assert body['scenes'][0]['rgb_url'] == '/v1/imagery/preview/S2A_A01_20260508?mode=rgb'
+
+
+def test_imagery_preview_is_public(monkeypatch):
+    monkeypatch.setattr(imagery_router_module, 'get_scene_for_preview', fake_scene_for_preview)
+    monkeypatch.setattr(imagery_router_module, 'build_preview_png', fake_build_preview_png)
+
+    with TestClient(app) as client:
+        response = client.get('/v1/imagery/preview/S2A_A01_20260508?mode=rgb')
+
+    assert response.status_code == 200
 
 
 def test_imagery_preview_uses_private_cache_headers(monkeypatch):

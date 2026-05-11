@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from backend.core.rate_limit import create_rate_limit_dependency
 from backend.core.schemas import PredictRequest, PredictResponse, TelemetryIngestRequest, TelemetryIngestResponse
 from backend.features.websocket.publish import publish_realtime_event
 
 router = APIRouter(tags=["prediction"])
 
 
-@router.post("/v1/predict", response_model=PredictResponse)
+@router.post("/v1/predict", response_model=PredictResponse, dependencies=[Depends(create_rate_limit_dependency("predict"))])
 async def predict(req: PredictRequest, request: Request):
     prediction = await request.app.state.ai_client.predict(req)
     prediction = await request.app.state.prediction_service.complete_prediction(req, prediction)

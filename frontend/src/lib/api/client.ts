@@ -1,7 +1,9 @@
-import { getAccessToken } from '../auth/token'
+import { refreshSession } from '../auth/api'
+import { clearAuthTokens, getAccessToken, getRefreshToken } from '../auth/token'
 import { ApiError, type ApiErrorBody } from './types'
 
 const DEFAULT_API_BASE_URL = 'http://localhost:8000'
+let refreshInFlight: Promise<string | null> | null = null
 
 export function getApiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
@@ -20,8 +22,25 @@ export function getWsUrl(): string {
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = shouldAttachAuth(path) ? getAccessToken() : null
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await performRequest(path, init)
+
+  if (response.status === 401 && shouldAttachAuth(path)) {
+    const refreshedToken = await refreshAccessToken()
+    if (refreshedToken) {
+      const retryResponse = await performRequest(path, init, refreshedToken)
+      return parseApiResponse<T>(retryResponse)
+    }
+
+    clearAuthTokens()
+    throw new ApiError('Authentication required', 401, null)
+  }
+
+  return parseApiResponse<T>(response)
+}
+
+async function performRequest(path: string, init: RequestInit, overrideToken?: string): Promise<Response> {
+  const token = shouldAttachAuth(path) ? (overrideToken ?? getAccessToken()) : null
+  return fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -29,7 +48,27 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       ...(init.headers ?? {}),
     },
   })
+}
 
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    return null
+  }
+
+  if (!refreshInFlight) {
+    refreshInFlight = refreshSession(refreshToken)
+      .then((session) => session.access_token)
+      .catch(() => null)
+      .finally(() => {
+        refreshInFlight = null
+      })
+  }
+
+  return refreshInFlight
+}
+
+async function parseApiResponse<T>(response: Response): Promise<T> {
   const text = await response.text()
   const body = parseJsonSafely(text)
 
@@ -63,5 +102,9 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
 }
 
 function shouldAttachAuth(path: string): boolean {
-  return path.startsWith('/v1/zones') || path.startsWith('/v1/alerts') || path === '/v1/predict' || path === '/v1/recommend' || path === '/v1/telemetry' || path === '/v1/commands'
+  return path.startsWith('/v1/zones') || path.startsWith('/v1/alerts') || path === '/v1/predict' || path.startsWith('/v1/recommend') || path === '/v1/telemetry' || path === '/v1/commands' || path === '/v1/auth/me'
+}
+
+export function resetApiClientStateForTests(): void {
+  refreshInFlight = null
 }

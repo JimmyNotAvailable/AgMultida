@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
+from backend.core.rate_limit import create_rate_limit_dependency
 from backend.core.schemas import IrrigationDecision, RecommendFromCacheRequest, RecommendRequest
 from backend.features.websocket.publish import publish_realtime_event
 
 router = APIRouter(tags=["recommendation"])
 
 
-@router.post("/v1/recommend", response_model=IrrigationDecision)
+@router.post("/v1/recommend", response_model=IrrigationDecision, dependencies=[Depends(create_rate_limit_dependency("recommend"))])
 async def recommend(req: RecommendRequest, request: Request):
     if request.app.state.gateway_mode == "stub":
         decision = request.app.state.decision_client.recommend(req)
@@ -20,7 +21,7 @@ async def recommend(req: RecommendRequest, request: Request):
     return decision
 
 
-@router.post("/v1/recommend/from-cache", response_model=IrrigationDecision)
+@router.post("/v1/recommend/from-cache", response_model=IrrigationDecision, dependencies=[Depends(create_rate_limit_dependency("recommend"))])
 async def recommend_from_cache(req: RecommendFromCacheRequest, request: Request):
     decision = await request.app.state.recommendation_service.recommend_from_cache(req)
     request.app.state.zone_status_cache.invalidate(req.zone_id)

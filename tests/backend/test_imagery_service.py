@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
+os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production-32b')
 
 from backend.core.errors import AgTechError, ErrorCode
 from backend.core.imagery import (

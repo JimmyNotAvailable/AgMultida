@@ -1,30 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
-import { getZoneAlerts, getZoneImageryHistorySafe, getZoneImageryLatestSafe, getZoneStatus } from '../../../lib/api'
+import { getZoneImageryHistorySafe, getZoneImageryLatestSafe, getZoneSpectralSafe } from '../../../lib/api'
 
 export const ZONE_STATUS_STALE_MS = 120_000
+const IMAGERY_STALE_TIME_MS = 5 * 60_000
+const SPECTRAL_STALE_TIME_MS = 10 * 60_000
 
 export function useDashboardQueries(zoneId: string) {
-  const statusQuery = useQuery({
-    queryKey: ['dashboard-zone-status', zoneId],
-    queryFn: () => getZoneStatus(zoneId),
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: 30_000,
-  })
-
-  const alertsQuery = useQuery({
-    queryKey: ['dashboard-zone-alerts', zoneId],
-    queryFn: async () => (await getZoneAlerts(zoneId)).alerts,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
 
   const imageryLatestQuery = useQuery({
     queryKey: ['dashboard-zone-imagery-latest', zoneId],
     queryFn: () => getZoneImageryLatestSafe(zoneId),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    refetchInterval: false,
+    staleTime: IMAGERY_STALE_TIME_MS,
+    gcTime: 15 * 60_000,
+    retry: 1,
   })
 
   const imageryHistoryQuery = useQuery({
@@ -32,9 +23,24 @@ export function useDashboardQueries(zoneId: string) {
     queryFn: () => getZoneImageryHistorySafe(zoneId, 10),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    refetchInterval: false,
+    staleTime: IMAGERY_STALE_TIME_MS,
+    gcTime: 15 * 60_000,
+    retry: 1,
   })
 
-  return { statusQuery, alertsQuery, imageryLatestQuery, imageryHistoryQuery }
+  const spectralQuery = useQuery({
+    queryKey: ['dashboard-zone-spectral', zoneId],
+    queryFn: () => getZoneSpectralSafe(zoneId),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+    staleTime: SPECTRAL_STALE_TIME_MS,
+    gcTime: 30 * 60_000,
+    retry: 1,
+  })
+
+  return { imageryLatestQuery, imageryHistoryQuery, spectralQuery }
 }
 
 export function isZoneStatusStale(updatedAt: string | null | undefined, now = Date.now()): boolean {

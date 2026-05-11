@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getZones } from '../../lib/api'
 import type { ZoneRegistryResponse } from '../../lib/api/types'
 import type { WebSocketStatus } from '../../lib/realtime/types'
-import { zones as fallbackZones, type ZoneData, type ZoneState } from './dashboardData'
+import { zones as fallbackZones, type ZoneBounds, type ZoneData, type ZoneState } from './dashboardData'
 
 interface DashboardState {
   wsStatus: WebSocketStatus
@@ -48,6 +48,10 @@ export function useDashboardZones() {
     select: toDashboardZones,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    refetchInterval: false,
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
+    retry: 1,
   })
 }
 
@@ -55,15 +59,18 @@ export function toDashboardZones(response: ZoneRegistryResponse): ZoneData[] {
   const fallbackById = new Map(fallbackZones.map((zone) => [zone.id, zone]))
   return response.zones.map((item, index) => {
     const fallback = fallbackById.get(item.zone.zone_id) ?? fallbackZones[index % fallbackZones.length]
+    const bounds = item.bounds ? { ...item.bounds } satisfies ZoneBounds : undefined
     return {
       ...fallback,
       id: item.zone.zone_id,
       label: `Zone ${item.zone.zone_id}`,
       name: item.zone.zone_name,
       province: item.zone.province,
-      crop: item.zone.crop_type,
+      crop: item.zone.crop_type || fallback.crop,
       state: deriveZoneState(fallback.stress),
-      note: item.bounds ? `bounds ${item.bounds.min_lng.toFixed(2)}, ${item.bounds.min_lat.toFixed(2)}` : fallback.note,
+      note: bounds ? `bounds ${bounds.min_lng.toFixed(2)}, ${bounds.min_lat.toFixed(2)}` : fallback.note,
+      bounds,
+      centroid: item.centroid ? [...item.centroid] as [number, number] : undefined,
     }
   })
 }

@@ -8,8 +8,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+from uuid import uuid4
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -60,17 +61,87 @@ def verify_api_key(provided_key: str, stored_hash: str, salt: str = "") -> bool:
     return hmac.compare_digest(computed, stored_hash)
 
 
+def create_token(subject: str, role: str, token_type: str, expiry_minutes: int) -> str:
+    from backend.core.config import get_settings
+
+    import jwt
+
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": subject,
+        "role": role,
+        "type": token_type,
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "iat": now,
+        "exp": now + timedelta(minutes=expiry_minutes),
+        "jti": str(uuid4()),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_access_token(subject: str, role: str) -> str:
+    from backend.core.config import get_settings
+
+    settings = get_settings()
+    return create_token(subject, role, "access", settings.JWT_EXPIRY_MINUTES)
+
+
+def create_refresh_token(subject: str, role: str) -> str:
+    from backend.core.config import get_settings
+
+    settings = get_settings()
+    return create_token(subject, role, "refresh", settings.JWT_REFRESH_EXPIRY_MINUTES)
+
+
 def decode_access_token(token: str) -> dict:
     from backend.core.config import get_settings
 
     settings = get_settings()
-    return decode_jwt(
+    payload = decode_jwt(
         token,
         settings.JWT_SECRET,
         settings.JWT_ALGORITHM,
         settings.JWT_ISSUER,
         settings.JWT_AUDIENCE,
     )
+    if payload.get("type") != "access":
+        from backend.core.errors import AgTechError, ErrorCode
+        raise AgTechError(
+            error_code=ErrorCode.AUTH_INVALID_TOKEN,
+            message="Invalid token",
+            status_code=401,
+        )
+    return payload
+
+
+def decode_refresh_token(token: str) -> dict:
+    from backend.core.config import get_settings
+
+    settings = get_settings()
+    payload = decode_jwt(
+        token,
+        settings.JWT_SECRET,
+        settings.JWT_ALGORITHM,
+        settings.JWT_ISSUER,
+        settings.JWT_AUDIENCE,
+    )
+    if payload.get("type") != "refresh":
+        from backend.core.errors import AgTechError, ErrorCode
+        raise AgTechError(
+            error_code=ErrorCode.AUTH_INVALID_TOKEN,
+            message="Invalid token",
+            status_code=401,
+        )
+    return payload
+
+
+def verify_admin_credentials(username: str, password: str) -> bool:
+    from backend.core.config import get_settings
+
+    settings = get_settings()
+    return hmac.compare_digest(username, settings.ADMIN_USERNAME) and hmac.compare_digest(password, settings.ADMIN_PASSWORD)
 
 
 def require_role(*allowed_roles: str):
@@ -113,13 +184,7 @@ def require_role(*allowed_roles: str):
                 status_code=401,
             )
 
-        payload = decode_jwt(
-            credentials.credentials,
-            settings.JWT_SECRET,
-            settings.JWT_ALGORITHM,
-            settings.JWT_ISSUER,
-            settings.JWT_AUDIENCE,
-        )
+        payload = decode_access_token(credentials.credentials)
         role = payload.get("role", "")
         if role not in allowed_roles:
             raise AgTechError(

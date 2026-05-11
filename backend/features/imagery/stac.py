@@ -8,6 +8,7 @@ import httpx
 
 from backend.core.config import get_settings
 from backend.core.errors import AgTechError, ErrorCode
+from backend.core.http_client import fetch_with_retry
 from backend.core.imagery_persistence import (
     fetched_at_from_row,
     load_latest_scene,
@@ -20,7 +21,6 @@ from backend.core.imagery_persistence import (
 )
 from backend.core.schemas import ImageryScene, ImagerySceneCollection
 
-EARTH_SEARCH_BASE_URL = "https://earth-search.aws.element84.com/v1"
 SENTINEL_COLLECTION = "sentinel-2-l2a"
 MAX_CLOUD_COVER = 20.0
 HISTORY_LIMIT = 10
@@ -144,65 +144,11 @@ async def try_save_scene(scene: ImageryScene) -> None:
 
 async def search_sentinel_scenes(polygon: list[list[float]], limit: int = HISTORY_LIMIT) -> list[SceneCandidate]:
     payload = build_stac_search_payload(polygon, limit=limit)
-    timeout = httpx.Timeout(get_settings().IMAGERY_TIMEOUT_MS / 1000)
+    settings = get_settings()
+    timeout = httpx.Timeout(settings.IMAGERY_TIMEOUT_MS / 1000)
     try:
-        async with httpx.AsyncClient(base_url=EARTH_SEARCH_BASE_URL, timeout=timeout) as client:
-            response = await client.post("/search", json=payload)
-            response.raise_for_status()
-            body = response.json()
-    except httpx.HTTPError as exc:
-        raise AgTechError(
-            error_code=ErrorCode.DEGRADED_SERVICE,
-            message="Imagery service unavailable",
-            status_code=502,
-            details={"service": "earth-search"},
-        ) from exc
-
-    return [candidate for item in body.get("features", []) if (candidate := parse_stac_item(item)) is not None]
-
-
-async def try_load_latest_scene(zone_id: str) -> ImageryScene | None:
-    try:
-        return await load_latest_scene(zone_id)
-    except Exception:
-        return None
-
-
-async def try_load_latest_scene_row(zone_id: str) -> dict[str, Any] | None:
-    try:
-        return await load_latest_scene_row(zone_id)
-    except Exception:
-        return None
-
-
-async def try_load_scene_history(zone_id: str, limit: int) -> ImagerySceneCollection:
-    try:
-        return await load_scene_history(zone_id, limit)
-    except Exception:
-        return ImagerySceneCollection(zone_id=zone_id, scenes=[])
-
-
-async def try_load_scene_history_rows(zone_id: str, limit: int) -> list[dict[str, Any]]:
-    try:
-        return await load_scene_history_rows(zone_id, limit)
-    except Exception:
-        return []
-
-
-async def try_save_scene(scene: ImageryScene) -> None:
-    try:
-        await save_scene(scene)
-    except Exception:
-        return
-
-
-async def search_sentinel_scenes(polygon: list[list[float]], limit: int = HISTORY_LIMIT) -> list[SceneCandidate]:
-    payload = build_stac_search_payload(polygon, limit=limit)
-    timeout = httpx.Timeout(get_settings().IMAGERY_TIMEOUT_MS / 1000)
-    try:
-        async with httpx.AsyncClient(base_url=EARTH_SEARCH_BASE_URL, timeout=timeout) as client:
-            response = await client.post("/search", json=payload)
-            response.raise_for_status()
+        async with httpx.AsyncClient(base_url=getattr(settings, "STAC_API_BASE_URL", "https://earth-search.aws.element84.com/v1"), timeout=timeout) as client:
+            response = await fetch_with_retry(client, "POST", "/search", json=payload)
             body = response.json()
     except httpx.HTTPError as exc:
         raise AgTechError(

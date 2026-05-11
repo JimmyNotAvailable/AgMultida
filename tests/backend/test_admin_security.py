@@ -8,10 +8,13 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
-os.environ.setdefault('AUTH_REQUIRED', 'true')
-os.environ.setdefault('ADMIN_RATE_LIMIT_COUNT', '2')
-os.environ.setdefault('ADMIN_RATE_LIMIT_WINDOW_SECONDS', '60')
+os.environ['JWT_SECRET'] = 'test-secret-not-for-production-32b'
+os.environ['AUTH_REQUIRED'] = 'true'
+os.environ['WS_REQUIRE_AUTH'] = 'true'
+os.environ['ADMIN_USERNAME'] = 'admin'
+os.environ['ADMIN_PASSWORD'] = 'admin123@'
+os.environ['ADMIN_RATE_LIMIT_COUNT'] = '2'
+os.environ['ADMIN_RATE_LIMIT_WINDOW_SECONDS'] = '60'
 
 from backend.api_gateway.main import app
 from backend.core.config import get_settings

@@ -16,15 +16,36 @@ test('alert event invalidates alert query', async () => {
   const queryClient = new QueryClient()
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
-  await handleRealtimeEvent(queryClient, { event: 'alert_opened', payload: { zone_id: 'A01' }, ts: '2026-05-10T00:00:00Z', trace_id: 't1' })
+  await handleRealtimeEvent(queryClient, { event: 'alert_created', payload: { zone_id: 'A01', alert_id: 'alert_1' }, ts: '2026-05-10T00:00:00Z', trace_id: 't1' })
 
   expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dashboard-zone-alerts', 'A01'] })
 })
 
+test('duplicate realtime event invalidates once', async () => {
+  const queryClient = new QueryClient()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+  const event = { event: 'alert_created', payload: { zone_id: 'A01', alert_id: 'alert_duplicate' }, ts: '2026-05-10T00:00:00Z', trace_id: 't1' }
+
+  await handleRealtimeEvent(queryClient, event)
+  await handleRealtimeEvent(queryClient, event)
+
+  expect(invalidateQueries).toHaveBeenCalledTimes(1)
+})
+
+test('distinct realtime events both invalidate', async () => {
+  const queryClient = new QueryClient()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+
+  await handleRealtimeEvent(queryClient, { event: 'alert_created', payload: { zone_id: 'A01', alert_id: 'alert_distinct_1' }, ts: '2026-05-10T00:00:00Z', trace_id: 't1' })
+  await handleRealtimeEvent(queryClient, { event: 'alert_created', payload: { zone_id: 'A01', alert_id: 'alert_distinct_2' }, ts: '2026-05-10T00:00:01Z', trace_id: 't2' })
+
+  expect(invalidateQueries).toHaveBeenCalledTimes(2)
+})
+
 test('reconnect delay grows exponentially and caps at 30s', () => {
-  expect(getNextReconnectDelay(0)).toBe(1000)
-  expect(getNextReconnectDelay(1)).toBe(2000)
-  expect(getNextReconnectDelay(2)).toBe(4000)
+  expect(getNextReconnectDelay(0)).toBe(5000)
+  expect(getNextReconnectDelay(1)).toBe(10000)
+  expect(getNextReconnectDelay(2)).toBe(20000)
   expect(getNextReconnectDelay(10)).toBe(30000)
 })
 

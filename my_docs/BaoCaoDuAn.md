@@ -1,765 +1,680 @@
- BÁO CÁO TỔNG QUÁT DỰ ÁN AGMULTIDA                                                                                          
-                                                                                                                             
-  1. Giới thiệu đề tài                                                                                                       
-                                                                                                                             
-  Đề tài AgMultida là hệ thống nông nghiệp thông minh đa phương thức nhằm phát hiện stress thiếu nước của cây trồng và từ đó 
-  đưa ra khuyến nghị tưới tiêu phù hợp cho từng vùng canh tác.                                                               
-                                                                                                                             
-  Điểm cốt lõi của đề tài là không chỉ dựa vào một nguồn dữ liệu đơn lẻ, mà kết hợp nhiều loại dữ liệu khác nhau, gồm:
-                                                                                                                             
-  - ảnh viễn thám/quang học
-  - dữ liệu cảm biến môi trường
-  - dữ liệu thời tiết
-  - ngữ cảnh không gian - thời gian của từng vùng canh tác
+# BÁO CÁO TỔNG QUAN ĐỀ TÀI AGMULTIDA
 
-  Từ đó, hệ thống hướng tới 2 mục tiêu song song:
+## 1. Giới thiệu đề tài
 
-  1. mục tiêu kỹ thuật/nghiên cứu: xây dựng mô hình AI đa phương thức có khả năng ước lượng mức độ stress nước
-  2. mục tiêu ứng dụng: biến đầu ra mô hình thành khuyến nghị tưới thực tế cho người vận hành
+AgMultida là hệ thống nông nghiệp thông minh đa phương thức, được xây dựng nhằm phát hiện sớm tình trạng stress thiếu nước của cây trồng và hỗ trợ đưa ra khuyến nghị tưới tiêu phù hợp cho từng vùng canh tác. Điểm cốt lõi của đề tài là không sử dụng một nguồn dữ liệu đơn lẻ, mà kết hợp đồng thời nhiều nguồn dữ liệu khác nhau gồm ảnh viễn thám, dữ liệu cảm biến môi trường, dữ liệu thời tiết và ngữ cảnh không gian - thời gian.
 
-  Nói ngắn gọn, đây là đề tài kết hợp giữa:
-  - xử lý dữ liệu nông nghiệp
-  - học sâu đa phương thức
-  - hệ thống backend/frontend phục vụ vận hành
-  - cơ chế ra quyết định tưới tiêu có giải thích
+Trong thực tế sản xuất nông nghiệp, stress thiếu nước là một trong những nguyên nhân chính làm giảm năng suất, suy giảm chất lượng cây trồng và gây lãng phí tài nguyên nước nếu tưới không đúng thời điểm. Vì vậy, việc xây dựng một hệ thống có khả năng nhận biết sớm trạng thái thiếu nước và đưa ra khuyến nghị tưới dựa trên dữ liệu là cần thiết cả về mặt nghiên cứu lẫn ứng dụng.
 
-  ---
-  2. Mục tiêu giải quyết của đề tài
+Đề tài hướng đến hai mục tiêu chính:
 
-  2.1. Bài toán đặt ra
+- Về mặt nghiên cứu: xây dựng mô hình học sâu đa phương thức để ước lượng mức độ stress nước của cây trồng.
+- Về mặt ứng dụng: chuyển đầu ra của mô hình thành khuyến nghị tưới tiêu có thể áp dụng trong vận hành thực tế.
 
-  Trong canh tác, đặc biệt ở vùng cây trồng phụ thuộc mạnh vào điều kiện nước, việc phát hiện sớm tình trạng thiếu nước là
-  rất quan trọng. Nếu phát hiện muộn:
+---
 
-  - năng suất có thể giảm
-  - cây suy yếu
-  - chi phí tưới tăng
-  - tưới sai thời điểm gây lãng phí nước
+## 2. Bài toán của đề tài
 
-  Bài toán của đề tài là:
+### 2.1. Bài toán đặt ra
 
-  ▎ Dựa trên dữ liệu ảnh + cảm biến + thời tiết, hệ thống có thể đánh giá mức độ stress nước của từng vùng và đề xuất hành
-  ▎ động tưới phù hợp hay không?
+Bài toán trung tâm của đề tài là: từ dữ liệu ảnh viễn thám, dữ liệu cảm biến đất - môi trường và dữ liệu thời tiết, hệ thống cần đánh giá được mức độ stress thiếu nước của cây trồng theo từng vùng canh tác tại từng thời điểm, sau đó chuyển kết quả này thành quyết định tưới tiêu phù hợp.
 
-  2.2. Mục tiêu cụ thể
+Xét về bản chất, đây không phải là bài toán phân loại nhị phân đơn giản kiểu “thiếu nước” hoặc “không thiếu nước”, mà là bài toán ước lượng mức độ stress nước theo thang liên tục trong khoảng từ 0 đến 1. Cách mô hình hóa này phù hợp hơn với thực tế vì trạng thái cây trồng thay đổi theo mức độ, không thay đổi đột ngột theo hai trạng thái tuyệt đối.
 
-  Đề tài đặt ra các mục tiêu chính:
+### 2.2. Các bài toán con được vận dụng
 
-  1. Xây dựng pipeline dữ liệu đa nguồn
-    - thu thập ảnh viễn thám
-    - thu thập dữ liệu thời tiết
-    - thu thập dữ liệu độ ẩm/đất/mưa
-    - đồng bộ các nguồn dữ liệu theo vùng và thời gian
-  2. Xây dựng mô hình AI đa phương thức
-    - đầu vào là ảnh + chuỗi thời gian cảm biến + ngữ cảnh thời tiết
-    - đầu ra là xác suất stress nước từ 0 đến 1
-  3. Ước lượng độ bất định
-    - không chỉ dự đoán stress
-    - mà còn cho biết mức độ tin cậy của dự đoán
-  4. Xây dựng luật quyết định tưới
-    - chuyển đầu ra mô hình thành khuyến nghị:
-        - không tưới
-      - tưới nhẹ
-      - tưới vừa
-      - tưới mạnh
-      - hoặc tạm hoãn
-  5. Tích hợp vào hệ thống phần mềm
-    - backend API
-    - dashboard frontend
-    - khả năng hiển thị giải thích và trạng thái vận hành
+Để giải quyết bài toán tổng thể, đề tài vận dụng đồng thời nhiều bài toán học máy và xử lý dữ liệu:
 
-  ---
-  3. Lý thuyết và thuật toán sử dụng
+1. **Bài toán hồi quy (Regression)**  
+   Dùng để dự đoán giá trị liên tục biểu diễn xác suất hoặc mức độ stress nước trong khoảng [0,1].
 
-  Đề tài dùng 2 lớp thuật toán chính:
+2. **Bài toán học sâu đa phương thức (Multimodal Deep Learning)**  
+   Dùng để học đồng thời từ nhiều nguồn dữ liệu khác bản chất như ảnh, chuỗi thời gian và vector thời tiết.
 
-  1. thuật toán học sâu đa phương thức
-  2. thuật toán ra quyết định dựa trên luật kết hợp với đầu ra AI
+3. **Bài toán học biểu diễn theo thời gian (Temporal Modeling)**  
+   Dùng để mô hình hóa diễn biến độ ẩm đất, nhiệt độ, mưa và các chỉ số môi trường trong một cửa sổ thời gian trước thời điểm dự đoán.
 
-  ---
-  4. Thuật toán học sâu dùng trong đề tài
+4. **Bài toán hợp nhất đặc trưng (Feature Fusion)**  
+   Dùng để kết hợp thông tin giữa các modality nhằm tạo ra biểu diễn tổng hợp giàu thông tin hơn so với từng nguồn riêng lẻ.
 
-  4.1. Mô hình tổng thể
+5. **Bài toán ước lượng độ bất định (Uncertainty Estimation)**  
+   Dùng để đánh giá mức độ tin cậy của mô hình khi đưa ra dự đoán, phục vụ quyết định tưới an toàn hơn.
 
-  Mô hình chính trong repo là MultimodalStressNet.
+6. **Bài toán ra quyết định (Decision Support)**  
+   Dùng để chuyển đầu ra của mô hình AI thành khuyến nghị vận hành như không tưới, tưới nhẹ, tưới vừa, tưới mạnh hoặc tạm hoãn.
 
-  Bài toán được mô hình hóa thành:
+### 2.3. Tại sao lựa chọn các bài toán này
 
-  ▎ hồi quy/proxy regression dự đoán mức độ stress nước trong khoảng [0,1]
+Việc lựa chọn các bài toán trên xuất phát từ đặc thù của bài toán nông nghiệp:
 
-  Đầu vào gồm 3 nhóm dữ liệu:
+- Stress nước là hiện tượng diễn ra liên tục theo thời gian, vì vậy cần bài toán hồi quy thay vì chỉ phân loại rời rạc.
+- Tình trạng cây trồng chịu tác động đồng thời của nhiều yếu tố như trạng thái quang phổ lá, độ ẩm đất, nhiệt độ, lượng mưa và bối cảnh thời tiết; do đó cần mô hình đa phương thức.
+- Dữ liệu cảm biến và thời tiết có tính chuỗi thời gian, nên cần thuật toán có khả năng học phụ thuộc theo thời gian.
+- Quyết định tưới tiêu là quyết định có rủi ro, do đó không chỉ cần dự đoán mà còn cần biết khi nào mô hình không chắc chắn.
+- Trong thực tế dữ liệu thường thiếu hoặc không đồng bộ hoàn toàn, nên mô hình cần có khả năng chịu lỗi và hoạt động trong điều kiện dữ liệu suy giảm.
 
-  1. ảnh viễn thám
-  2. chuỗi thời gian cảm biến/môi trường
-  3. ngữ cảnh thời tiết
+Như vậy, việc lựa chọn các bài toán và thuật toán trong đề tài không mang tính ngẫu nhiên, mà được xây dựng trực tiếp từ yêu cầu thực tiễn của bài toán phát hiện stress nước và hỗ trợ tưới tiêu.
 
-  Mô hình có cấu trúc 3 nhánh:
+---
 
-  - nhánh ảnh
-  - nhánh chuỗi thời gian
-  - nhánh thời tiết
+## 3. Bộ dữ liệu sử dụng
 
-  sau đó hợp nhất bằng cơ chế cross-attention fusion.
+### 3.1. Tổng quan bộ dữ liệu
 
-  ---
-  4.2. Nhánh ảnh
+Đề tài sử dụng bộ dữ liệu đa nguồn, gồm bốn nhóm chính:
 
-  Nhánh ảnh dùng backbone kiểu:
+1. Dữ liệu ảnh viễn thám
+2. Dữ liệu cảm biến và môi trường
+3. Dữ liệu thời tiết
+4. Dữ liệu không gian vùng canh tác
 
-  - EfficientNet-B3
+Mỗi nhóm dữ liệu đóng một vai trò khác nhau trong việc mô tả trạng thái cây trồng và điều kiện canh tác.
 
-  Đầu vào ảnh có dạng:
+### 3.2. Dữ liệu ảnh viễn thám
 
-  - tensor [B, 4, 224, 224]
+Nguồn ảnh chính được sử dụng là **Sentinel-2 L2A**. Đây là loại ảnh vệ tinh quang học có độ phủ rộng, được hiệu chỉnh khí quyển, phù hợp cho các bài toán theo dõi thảm thực vật.
 
-  Tức là 4 kênh ảnh:
-  - B2
-  - B3
-  - B4
-  - B8
+Các kênh phổ chính được sử dụng gồm:
 
-  Trong ngữ cảnh Sentinel-2, đây tương ứng với:
-  - các kênh quang học nhìn thấy
-  - và kênh cận hồng ngoại (NIR)
+- B2
+- B3
+- B4
+- B8
 
-  Ý nghĩa:
-  - các kênh RGB phản ánh bề mặt trực quan
-  - kênh NIR giúp phản ánh trạng thái thực vật tốt hơn, đặc biệt hữu ích trong phát hiện stress sinh lý
+Ý nghĩa của từng nhóm kênh:
 
-  => đây là lý do mô hình ảnh không dùng ảnh RGB thông thường, mà dùng ảnh 4 kênh.
+- B2, B3, B4 phản ánh thông tin phổ trong vùng nhìn thấy, giúp mô tả bề mặt và hiện trạng quan sát trực quan.
+- B8 là kênh cận hồng ngoại (NIR), đặc biệt quan trọng trong giám sát thực vật vì phản ánh mạnh trạng thái sinh lý của cây.
 
-  ---
-  4.3. Nhánh chuỗi thời gian
+Việc lựa chọn ảnh 4 kênh thay vì RGB thông thường giúp mô hình học tốt hơn các dấu hiệu liên quan đến sức khỏe thực vật và stress nước.
 
-  Nhánh cảm biến/chuỗi thời gian dùng:
+### 3.3. Dữ liệu cảm biến và môi trường
 
-  - GRU 2 lớp
-  - có cơ chế attention trên chuỗi thời gian
+Nhóm dữ liệu này phản ánh trực tiếp trạng thái đất và môi trường gần mặt đất. Các biến đầu vào chính gồm:
 
-  Đầu vào:
+- soil_moisture
+- soil_temp
+- air_temp
+- humidity
+- ec
+- ph
+- rain_3h
+- rain_24h
 
-  - [B, 48, 8]
+Vai trò của nhóm dữ liệu này là cung cấp thông tin động theo thời gian, đặc biệt là xu hướng suy giảm hoặc phục hồi độ ẩm đất, vốn là tín hiệu rất quan trọng để phát hiện stress nước.
 
-  Tức là:
-  - 48 mốc thời gian
-  - 8 đặc trưng mỗi mốc
-  - tương ứng cửa sổ 48 giờ trước thời điểm dự đoán
+### 3.4. Dữ liệu thời tiết
 
-  GRU được dùng vì:
-  - phù hợp xử lý dữ liệu tuần tự
-  - nhẹ hơn LSTM
-  - vẫn giữ được ngữ cảnh thời gian ngắn - trung bình khá tốt
+Các nguồn thời tiết được khai thác gồm:
 
-  Attention trên chuỗi thời gian giúp mô hình:
-  - biết mốc thời gian nào quan trọng hơn
-  - ví dụ: biến động độ ẩm đất gần thời điểm hiện tại có thể quan trọng hơn mốc xa hơn
+- ERA5-Land
+- CHIRPS
+- Open-Meteo
 
-  ---
-  4.4. Nhánh thời tiết
+Các đặc trưng thời tiết tổng hợp gồm:
 
-  Nhánh thời tiết dùng:
+- rain_forecast_3h
+- rain_24h_cumulative
+- temp_max_24h
+- temp_min_24h
+- humidity_avg_24h
+- et0_daily
 
-  - MLP nhiều lớp
+Nhóm dữ liệu này giúp cung cấp bối cảnh khí tượng, từ đó làm rõ nguyên nhân và xu hướng của stress nước. Ví dụ, cùng một mức độ ẩm đất nhưng nếu sắp có mưa lớn thì quyết định tưới có thể khác hoàn toàn so với trường hợp nắng nóng kéo dài.
 
-  Đầu vào:
-  - vector thời tiết 6 chiều
+### 3.5. Dữ liệu không gian vùng canh tác
 
-  Ý nghĩa:
-  - nhánh này không học không gian như ảnh
-  - cũng không học phụ thuộc dài như GRU
-  - mà đóng vai trò cung cấp bối cảnh khí tượng tổng hợp
+Dữ liệu không gian gồm:
 
-  Ví dụ:
-  - nhiệt độ cực đại
-  - nhiệt độ cực tiểu
-  - lượng mưa dự báo
-  - độ ẩm trung bình
-  - ET0 hằng ngày
+- zone polygons
+- registry vùng canh tác
+- metadata địa lý
 
-  ---
-  4.5. Cơ chế hợp nhất: Cross-Attention Fusion
+Dữ liệu này đóng vai trò xác định đơn vị phân tích là từng vùng (zone), giúp gom dữ liệu theo không gian, đồng bộ mẫu học máy và hiển thị kết quả trên dashboard bản đồ.
 
-  Đây là thành phần rất quan trọng.
+---
 
-  Thay vì chỉ nối thẳng đặc trưng lại với nhau, hệ thống dùng:
+## 4. Đặc trưng dữ liệu đầu vào
 
-  - cross-attention
+### 4.1. Đặc trưng ảnh
 
-  Cụ thể:
-  - embedding ảnh đóng vai trò query
-  - chuỗi cảm biến + token thời tiết đóng vai trò context
+Đầu vào ảnh được biểu diễn dưới dạng tensor kích thước:
 
-  Tác dụng:
-  - cho mô hình học xem vùng ảnh nào nên “chú ý” đến tín hiệu cảm biến/thời tiết nào
-  - khai thác quan hệ liên phương thức tốt hơn so với concat thuần túy
+- `[B, 4, 224, 224]`
 
-  Đây là điểm then chốt khiến đề tài mang tính multimodal AI chứ không chỉ là ghép nhiều đầu vào đơn giản.
+Trong đó:
 
-  ---
-  4.6. Modality Dropout
+- `B` là kích thước batch
+- `4` là số kênh phổ sử dụng
+- `224 x 224` là kích thước ảnh sau chuẩn hóa
 
-  Trong thực tế, dữ liệu đa nguồn thường bị thiếu:
-  - có lúc thiếu ảnh
-  - có lúc thiếu cảm biến
-  - có lúc thiếu thời tiết
+Các giá trị ảnh được đưa về dạng `float32` và chuẩn hóa về khoảng phù hợp để mô hình học ổn định.
 
-  Đề tài xử lý việc đó bằng:
+### 4.2. Đặc trưng chuỗi thời gian
 
-  - modality dropout
+Dữ liệu cảm biến được biểu diễn dưới dạng tensor:
 
-  Trong huấn luyện:
-  - xác suất p = 0.3
-  - hệ thống ngẫu nhiên làm rỗng một số modality
+- `[B, 48, 8]`
 
-  Ý nghĩa:
-  - mô hình học được cách hoạt động kể cả khi thiếu một phần dữ liệu
-  - tăng độ bền khi triển khai thực tế
+Ý nghĩa:
 
-  ---
-  4.7. MC Dropout để ước lượng bất định
+- 48 mốc thời gian liên tiếp
+- 8 đặc trưng tại mỗi mốc
+- tương ứng cửa sổ quan sát 48 giờ trước thời điểm dự đoán
 
-  Đề tài không chỉ dự đoán đầu ra một lần, mà dùng:
+Biểu diễn này cho phép mô hình học xu hướng biến đổi theo thời gian, thay vì chỉ nhìn vào một thời điểm tĩnh.
 
-  - MC Dropout
-  - chạy nhiều forward pass
-  - lấy trung bình xác suất
-  - lấy phương sai làm uncertainty
+### 4.3. Đặc trưng thời tiết
 
-  Tác dụng:
-  - nếu mô hình không chắc chắn, hệ thống biết điều đó
-  - đây là điều rất quan trọng trong bài toán ra quyết định tưới, vì dự đoán sai có thể dẫn đến hành động sai
+Dữ liệu thời tiết được biểu diễn dưới dạng vector 6 chiều. Đây là dạng đặc trưng tổng hợp, phản ánh bối cảnh khí tượng ngắn hạn và trung hạn trước hoặc gần thời điểm dự đoán.
 
-  Đây là điểm mạnh thực tế:
-  - không chỉ “dự đoán”
-  - mà còn “biết khi nào mình không chắc”
+### 4.4. Đặc trưng phụ trợ
 
-  ---
-  5. Chúng ta dùng thuật toán này để giải quyết bài toán gì?
+Ngoài ba nhóm chính, mỗi mẫu còn có thêm:
 
-  Thuật toán trên được dùng để giải quyết bài toán:
+- modality mask
+- zone_id
+- timestamp
+- metadata truy vết
 
-  ▎ ước lượng mức độ stress thiếu nước của cây trồng theo từng vùng canh tác tại từng thời điểm
+Trong đó, `modality mask` có vai trò đánh dấu modality nào đang có hoặc thiếu dữ liệu tại thời điểm suy luận.
 
-  Đầu ra AI có dạng:
-  - stress_prob: xác suất stress
-  - uncertainty: độ bất định
-  - confidence_flag
-  - attention_weights
-  - explanation
-  - degraded_mode
+---
 
-  Nghĩa là hệ thống không dừng ở “có hay không”, mà trả về:
-  - mức độ stress
-  - độ tin cậy
-  - giải thích tương đối
-  - trạng thái dữ liệu có bị suy giảm không
+## 5. Tiền xử lý dữ liệu
 
-  Sau đó đầu ra này được chuyển sang bài toán thứ hai:
+### 5.1. Tiền xử lý ảnh viễn thám
 
-  ▎ đưa ra quyết định tưới tiêu
+Dữ liệu ảnh được xử lý qua các bước:
 
-  ---
-  6. Chúng ta giải quyết bài toán như thế nào?
+1. Cắt ảnh theo vùng canh tác tương ứng.
+2. Lấy đúng 4 kênh phổ cần thiết: B2, B3, B4, B8.
+3. Resize hoặc crop về kích thước chuẩn 224x224.
+4. Chuyển dữ liệu về dạng số thực.
+5. Chuẩn hóa giá trị ảnh để đưa về cùng thang đo.
 
-  Luồng giải quyết bài toán trong hệ thống gồm các bước chính:
+Mục tiêu của bước này là làm đồng nhất đầu vào, giảm nhiễu do khác biệt kích thước và đảm bảo mô hình học ổn định.
 
-  Bước 1. Thu thập dữ liệu đa nguồn
+### 5.2. Tiền xử lý dữ liệu chuỗi thời gian
 
-  - ảnh Sentinel-2
-  - dữ liệu mưa
-  - dữ liệu thời tiết
-  - dữ liệu độ ẩm đất và các yếu tố liên quan
-  - metadata theo vùng
+Dữ liệu cảm biến và môi trường được xử lý qua các bước:
 
-  Bước 2. Đồng bộ dữ liệu
+1. Resample theo đơn vị giờ.
+2. Xây dựng cửa sổ lookback 48 giờ.
+3. Chuẩn hóa từng đặc trưng bằng Min-Max Scaling hoặc chuẩn hóa tương đương.
+4. Cắt ngưỡng ngoại lai nhằm giảm ảnh hưởng của dữ liệu bất thường.
+5. Sắp xếp dữ liệu theo đúng thứ tự thời gian.
 
-  - lấy ảnh Sentinel-2 làm trục chính
-  - các nguồn khác được align theo:
-    - zone_id
-    - timestamp
+Bước này giúp thuật toán GRU học được xu hướng biến đổi theo thời gian mà không bị lệch bởi khác biệt thang đo giữa các biến.
 
-  Bước 3. Tạo mẫu học máy
+### 5.3. Tiền xử lý dữ liệu thời tiết
 
-  Mỗi sample gồm:
-  - ảnh 4 kênh
-  - chuỗi cảm biến 48 giờ
-  - vector thời tiết 6 chiều
-  - modality mask
-  - label stress proxy
+Dữ liệu thời tiết được tổng hợp theo khoảng thời gian phù hợp và biến đổi thành các đặc trưng thống kê như lượng mưa tích lũy, nhiệt độ cực đại, nhiệt độ cực tiểu, độ ẩm trung bình và ET0 hằng ngày. Điều này giúp giảm nhiễu và tăng tính khái quát cho nhánh thời tiết của mô hình.
 
-  Bước 4. Huấn luyện mô hình đa phương thức
+### 5.4. Đồng bộ dữ liệu đa nguồn
 
-  - ảnh -> EfficientNet-B3
-  - chuỗi -> GRU + attention
-  - weather -> MLP
-  - fusion -> cross-attention
-  - output -> stress probability
+Đây là bước rất quan trọng của đề tài. Các nguồn dữ liệu khác nhau được đồng bộ theo:
 
-  Bước 5. Hậu xử lý đầu ra
+- `zone_id`
+- `timestamp`
 
-  - calibration
-  - EMA smoothing
-  - confidence flag
-  - degraded mode
+Ảnh Sentinel-2 được sử dụng làm mốc chính theo thời điểm quan sát. Các nguồn khác như cảm biến và thời tiết được căn chỉnh về cùng trục không gian - thời gian để tạo mẫu học máy thống nhất.
 
-  Bước 6. Decision engine
+### 5.5. Xử lý thiếu dữ liệu
 
-  Dựa trên:
-  - stress probability
-  - uncertainty
-  - soil moisture
-  - rain forecast
-  - degraded mode
+Trong thực tế, hệ thống đa nguồn thường gặp tình trạng thiếu dữ liệu do ảnh bị mây che, cảm biến lỗi hoặc nguồn thời tiết cập nhật chậm. Đề tài xử lý bằng các cách:
 
-  để đưa ra:
-  - no_irrigation
-  - light
-  - moderate
-  - heavy
-  - hold
+- zero-fill ở mức đầu vào
+- sử dụng `modality mask`
+- huấn luyện với `modality dropout`
 
-  Bước 7. Hiển thị kết quả cho người dùng
+Nhờ đó, mô hình không phụ thuộc tuyệt đối vào việc tất cả các nguồn dữ liệu đều đầy đủ.
 
-  Qua:
-  - API
-  - dashboard
-  - zone map
-  - recommendation panel
-  - alert feed
+### 5.6. Chống rò rỉ dữ liệu
 
-  ---
-  7. Dữ liệu thu thập gồm những loại nào?
+Dữ liệu được chia theo nguyên tắc không gian - thời gian, nhằm:
 
-  Đây là phần rất quan trọng của đề tài.
+- tránh rò rỉ thông tin giữa train/validation/test
+- phản ánh sát hơn điều kiện vận hành thực tế
 
-  7.1. Ảnh viễn thám
+Đây là bước cần thiết để việc đánh giá mô hình có ý nghĩa hơn so với chia ngẫu nhiên đơn giản.
 
-  Nguồn chính:
-  - Sentinel-2 L2A
+---
 
-  Các kênh chính dùng:
-  - B2
-  - B3
-  - B4
-  - B8
+## 6. Xây dựng nhãn (Label)
 
-  Vai trò:
-  - phản ánh trạng thái quang phổ của thảm thực vật
-  - hỗ trợ đánh giá sự suy giảm sinh trưởng do thiếu nước
+### 6.1. Đặc điểm của nhãn
 
-  ---
-  7.2. Dữ liệu đất và độ ẩm
+Trong giai đoạn hiện tại, nhãn của đề tài được xây dựng theo dạng **proxy label**, chưa phải nhãn thực địa đo trực tiếp đầy đủ trên quy mô lớn. Đây là cách tiếp cận hợp lý trong bối cảnh bài toán nông nghiệp thường thiếu ground-truth chuẩn hóa và tốn chi phí thu thập.
 
-  Nguồn:
-  - SMAP (soil moisture)
-  - hoặc dữ liệu tương đương trong pipeline môi trường
+### 6.2. Công thức xây dựng nhãn stress
 
-  Vai trò:
-  - phản ánh trực tiếp tình trạng nước trong đất
-  - là tín hiệu rất mạnh đối với stress nước
+Nhãn stress được tổng hợp từ các thành phần:
 
-  ---
-  7.3. Dữ liệu thời tiết
+- soil_moisture_deficit
+- ndvi_anomaly
+- et_deficit
+- rain_relief
+- heat_penalty
 
-  Nguồn:
-  - ERA5-Land
-  - CHIRPS
-  - Open-Meteo
+Các thành phần này được kết hợp theo trọng số:
 
-  Vai trò:
-  - cung cấp mưa, nhiệt độ, độ ẩm, ET0, bối cảnh khí tượng
-  - dùng cả trong nhánh thời tiết và decision engine
+- soil_moisture_deficit: 0.40
+- ndvi_anomaly: 0.35
+- et_deficit: 0.25
+- rain_relief: -0.15
+- heat_penalty: 0.15
 
-  ---
-  7.4. Dữ liệu không gian vùng canh tác
+Sau đó, tổng hợp được đưa qua hàm sigmoid để thu được giá trị trong khoảng [0,1].
 
-  Nguồn:
-  - zone polygons
-  - registry vùng
-  - metadata địa lý
+### 6.3. Ý nghĩa và hạn chế
 
-  Vai trò:
-  - xác định đơn vị phân tích là từng zone
-  - làm cơ sở gom dữ liệu và hiển thị dashboard
+Cách xây dựng proxy label có ý nghĩa ở chỗ:
 
-  ---
-  8. Đặc trưng dữ liệu là gì?
+- tận dụng tri thức miền nông nghiệp để xây dựng nhãn khi chưa có nhãn đầy đủ
+- cho phép triển khai nghiên cứu và huấn luyện mô hình ở giai đoạn đầu
+- phản ánh phần nào mức độ stress nước theo logic vật lý - sinh lý cây trồng
 
-  8.1. Đặc trưng ảnh
+Tuy nhiên, hạn chế là:
 
-  - tensor ảnh 4 kênh
-  - kích thước chuẩn hóa 224x224
-  - giá trị float32
-  - normalize về [0,1]
+- nhãn không hoàn toàn tương đương ground-truth ngoài thực địa
+- có thể mang sai số tích lũy từ các chỉ số thành phần
+- cần được cải thiện bằng dữ liệu đo thực địa trong các giai đoạn tiếp theo
 
-  8.2. Đặc trưng chuỗi thời gian
+---
 
-  8 biến chính:
-  - soil_moisture
-  - soil_temp
-  - air_temp
-  - humidity
-  - ec
-  - ph
-  - rain_3h
-  - rain_24h
+## 7. Mô hình Deep Learning sử dụng trong đề tài
 
-  Cửa sổ:
-  - 48 giờ
-  - lấy mẫu theo giờ
+### 7.1. Mô hình tổng thể
 
-  8.3. Đặc trưng thời tiết
+Mô hình chính được sử dụng trong đề tài là **MultimodalStressNet**. Đây là mô hình học sâu đa nhánh, được thiết kế để tiếp nhận đồng thời ba loại dữ liệu:
 
-  6 biến:
-  - rain_forecast_3h
-  - rain_24h_cumulative
-  - temp_max_24h
-  - temp_min_24h
-  - humidity_avg_24h
-  - et0_daily
+1. Ảnh viễn thám
+2. Chuỗi thời gian cảm biến - môi trường
+3. Vector thời tiết
 
-  8.4. Đặc trưng phụ trợ
+Kiến trúc tổng thể gồm các khối:
 
-  - modality mask
-  - zone_id
-  - timestamp
-  - metadata truy vết
+- Image Encoder
+- Temporal Encoder
+- Weather Encoder
+- Cross-Attention Fusion
+- Output Head
+- Uncertainty Estimation
 
-  ---
-  9. Chúng ta đã tiền xử lý dữ liệu như thế nào?
+Đầu ra cuối cùng của mô hình gồm:
 
-  Các bước tiền xử lý chính:
+- `stress_prob`: xác suất hoặc mức độ stress nước
+- `uncertainty`: độ bất định của dự đoán
+- các thông tin giải thích như attention weights hoặc confidence flag
 
-  9.1. Chuẩn hóa ảnh
+---
 
-  - resize/crop về kích thước thống nhất
-  - lấy đúng 4 kênh cần dùng
-  - chuẩn hóa float [0,1]
+## 8. Lý thuyết và thuật toán sử dụng trong mô hình
 
-  9.2. Tiền xử lý chuỗi thời gian
+### 8.1. CNN và EfficientNet-B3 cho nhánh ảnh
 
-  - resample theo giờ
-  - lấy lookback 48h
-  - Min-Max scaling cho từng feature
-  - clip outlier khoảng ±3σ
+#### a) Lý thuyết CNN
 
-  9.3. Đồng bộ đa nguồn
+Mạng tích chập (Convolutional Neural Network - CNN) là loại mạng nơ-ron đặc biệt hiệu quả trong xử lý ảnh. CNN hoạt động dựa trên các lớp tích chập để học đặc trưng không gian từ dữ liệu ảnh, từ các đặc trưng mức thấp như biên, góc, texture đến các đặc trưng mức cao hơn như cấu trúc bề mặt, vùng thực vật và kiểu phản xạ phổ.
 
-  - lấy timestamp ảnh Sentinel-2 làm t0
-  - các nguồn khác align theo zone_id + timestamp
+Ưu điểm của CNN:
 
-  9.4. Xử lý thiếu dữ liệu
+- khai thác tốt cấu trúc không gian cục bộ
+- giảm số lượng tham số nhờ chia sẻ kernel
+- học đặc trưng ảnh tốt hơn so với các mô hình truyền thống thủ công
 
-  - dùng zero-fill
-  - dùng modality mask
-  - huấn luyện với modality dropout để mô hình chịu được trường hợp thiếu dữ liệu
+#### b) Lý thuyết EfficientNet
 
-  9.5. Chống leakage
+EfficientNet là họ mô hình CNN tối ưu bằng cơ chế **compound scaling**, tức là mở rộng đồng thời chiều sâu, chiều rộng và độ phân giải đầu vào theo cách cân bằng. So với nhiều backbone CNN truyền thống, EfficientNet cho hiệu quả tốt với chi phí tính toán hợp lý.
 
-  Dữ liệu được thiết kế split theo không gian - thời gian để:
-  - tránh rò rỉ thông tin giữa train/val/test
-  - đảm bảo đánh giá thực tế hơn
+Trong đề tài, **EfficientNet-B3** được chọn vì:
 
-  ---
-  10. Label được xây dựng như thế nào?
+- đủ mạnh để trích xuất đặc trưng ảnh đa phổ
+- chi phí tính toán vừa phải
+- phù hợp triển khai thực nghiệm và suy luận
+- đạt cân bằng tốt giữa độ chính xác và tốc độ
 
-  Đây là điểm cần trình bày trung thực.
+#### c) Cách vận dụng trong đề tài
 
-  Hiện tại label trong đề tài là:
+Trong đề tài, EfficientNet-B3 được dùng làm **image encoder** cho ảnh Sentinel-2 4 kênh. Nhiệm vụ của nhánh này là học các mẫu không gian và phổ liên quan đến sức khỏe cây trồng, chẳng hạn:
 
-  ▎ proxy label, không phải ground-truth thực địa đo trực tiếp
+- sự thay đổi phản xạ của thảm thực vật
+- dấu hiệu suy giảm sinh trưởng
+- trạng thái khô hạn trên bề mặt vùng canh tác
 
-  Label stress được tạo từ tổ hợp:
-  - soil moisture deficit
-  - NDVI anomaly
-  - ET deficit
-  - rain relief
-  - heat penalty
+Nhờ đó, nhánh ảnh đóng vai trò cung cấp thông tin trực quan và quang phổ về hiện trạng cây trồng.
 
-  Theo trọng số tài liệu:
-  - soil_moisture_deficit: 0.40
-  - ndvi_anomaly: 0.35
-  - et_deficit: 0.25
-  - rain_relief: -0.15
-  - heat_penalty: 0.15
+### 8.2. GRU cho nhánh chuỗi thời gian
 
-  Sau đó đưa qua hàm sigmoid để được giá trị trong [0,1].
+#### a) Lý thuyết RNN và GRU
 
-  Ý nghĩa:
-  - đây là cách xây dựng nhãn hợp lý khi chưa có nhãn thực địa đầy đủ
-  - phù hợp cho giai đoạn nghiên cứu ban đầu
-  - nhưng vẫn là một giới hạn của đề tài
+RNN (Recurrent Neural Network) là mô hình dành cho dữ liệu tuần tự, có khả năng ghi nhớ thông tin từ các bước thời gian trước. Tuy nhiên, RNN cơ bản dễ gặp hiện tượng mất gradient khi chuỗi dài.
 
-  ---
-  11. Chúng ta xây dựng model như thế nào?
+GRU (Gated Recurrent Unit) là biến thể cải tiến của RNN, sử dụng các cổng để kiểm soát việc cập nhật và ghi nhớ trạng thái ẩn. So với LSTM, GRU có cấu trúc đơn giản hơn, ít tham số hơn nhưng vẫn học tốt quan hệ theo thời gian.
 
-  Quy trình xây dựng model gồm:
+Ưu điểm của GRU:
 
-  1. xác định contract đầu vào/đầu ra
-  2. xây dựng dataloader đa phương thức
-  3. xây dựng từng encoder:
-    - image encoder
-    - temporal encoder
-    - weather encoder
-  4. xây dựng fusion module bằng cross-attention
-  5. xây dựng output head
-  6. thêm uncertainty bằng MC Dropout
-  7. thêm post-processing và explanation
+- học phụ thuộc thời gian hiệu quả
+- nhẹ hơn LSTM
+- phù hợp với chuỗi thời gian ngắn và trung bình
+- dễ huấn luyện hơn trong nhiều bài toán thực tế
 
-  Loss/huấn luyện:
-  - optimizer: AdamW
-  - learning rate: 3e-4
-  - weight decay: 1e-4
-  - scheduler: OneCycleLR
-  - batch size: 32
-  - max epoch: 50
-  - early stopping patience: 7
-  - AMP: bật
+#### b) Cách vận dụng trong đề tài
 
-  Loss chính:
-  - MSE trên xác suất sigmoid
-  - có hỗ trợ label smoothing
+Trong đề tài, dữ liệu cảm biến được tổ chức thành chuỗi 48 giờ gần nhất trước thời điểm dự đoán. GRU 2 lớp được sử dụng để học:
 
-  ---
-  12. Kết quả training ra sao?
+- xu hướng giảm hoặc tăng độ ẩm đất
+- mối liên hệ giữa mưa, nhiệt độ, độ ẩm không khí và trạng thái cây trồng
+- động thái thay đổi của môi trường gần thời điểm đánh giá
 
-  Phần này cần nói rất trung thực theo repo hiện có.
+Lý do chọn GRU thay vì chỉ dùng MLP hoặc thống kê thủ công là vì stress nước không chỉ phụ thuộc giá trị tức thời mà còn phụ thuộc xu hướng biến đổi theo thời gian.
 
-  12.1. Kết quả đã có chắc chắn
+### 8.3. Attention cho chuỗi thời gian
 
-  Repo hiện đã có:
-  - kiến trúc model hoàn chỉnh
-  - training pipeline
-  - export ONNX pipeline
-  - inference wrapper
-  - post-processing
-  - decision engine
-  - dữ liệu thu thập và báo cáo chất lượng nguồn dữ liệu
+#### a) Lý thuyết Attention
 
-  Ngoài ra có bằng chứng dữ liệu:
-  - Sentinel-2: thu được 13 scene
-  - 6/6 zone pass
-  - Open-Meteo pass
-  - CHIRPS pass ở mức nguồn dữ liệu
+Cơ chế attention cho phép mô hình học cách “chú ý” nhiều hơn vào những thành phần quan trọng trong đầu vào, thay vì xem mọi thời điểm đều có tầm quan trọng như nhau.
 
-  12.2. Kết quả training cuối cùng
+Trong bài toán chuỗi thời gian, attention giúp mô hình xác định:
 
-  Trong repo hiện tại, chưa thấy kết quả train cuối cùng đã chốt như:
-  - bảng metric hoàn chỉnh
-  - checkpoint production đã xác nhận
-  - MAE/RMSE/F1/AUROC cuối cùng từ run thật
+- mốc thời gian nào ảnh hưởng mạnh nhất đến dự đoán hiện tại
+- biến động nào trong quá khứ gần cần được ưu tiên
 
-  Tức là:
-  - pipeline train đã sẵn
-  - kiến trúc mô hình đã có
-  - dữ liệu đã tiến triển
-  - nhưng báo cáo final metric huấn luyện chưa được chốt rõ trong repo
+#### b) Cách vận dụng trong đề tài
 
-  Nếu anh viết báo cáo, nên ghi:
+Attention được đặt lên trên đầu ra của GRU để giúp mô hình tập trung nhiều hơn vào các thời điểm quan trọng, ví dụ:
 
-  ▎ Hệ thống đã xây dựng hoàn chỉnh pipeline huấn luyện và đánh giá, tuy nhiên tại thời điểm tổng hợp, repo chủ yếu phản ánh
-  ▎ trạng thái scaffolding kỹ thuật, hợp đồng dữ liệu, mô hình, và đường ống suy luận; chưa có bảng kết quả huấn luyện cuối
-  ▎ cùng được đóng gói thành báo cáo metrics chính thức trong mã nguồn hiện tại.
+- độ ẩm đất giảm mạnh gần thời điểm hiện tại
+- mưa vừa xảy ra nhưng chưa đủ để phục hồi độ ẩm
+- nhiệt độ tăng cao trong khoảng ngắn trước thời điểm dự đoán
 
-  Đây là cách nói chuẩn và an toàn.
+Nhờ attention, mô hình không bị phụ thuộc cứng nhắc vào việc gộp toàn bộ chuỗi theo cách đồng đều.
 
-  ---
-  13. Có giải quyết đúng mục tiêu bài toán đặt ra không?
+### 8.4. MLP cho nhánh thời tiết
 
-  Câu trả lời nên chia 2 mức.
+#### a) Lý thuyết MLP
 
-  13.1. Ở mức kiến trúc và nghiên cứu
+MLP (Multilayer Perceptron) là mạng nơ-ron truyền thẳng nhiều lớp, phù hợp với dữ liệu vector có số chiều cố định. MLP học các quan hệ phi tuyến giữa các biến đầu vào và đầu ra thông qua nhiều lớp fully connected kết hợp hàm kích hoạt phi tuyến.
 
-  Có.
+#### b) Cách vận dụng trong đề tài
 
-  Vì đề tài đã:
-  - xác định đúng bài toán stress nước
-  - thiết kế dữ liệu đa phương thức phù hợp
-  - xây dựng mô hình đa phương thức hợp lý
-  - thêm uncertainty estimation
-  - thêm decision engine phục vụ tưới tiêu
-  - thêm pipeline backend/frontend để tích hợp hệ thống
+Nhánh thời tiết nhận vào vector 6 chiều gồm các chỉ số khí tượng tổng hợp. MLP được dùng để mã hóa các đặc trưng này thành embedding thời tiết. Lý do dùng MLP là vì dữ liệu thời tiết ở đây đã ở dạng đặc trưng tổng hợp, không cần xử lý không gian như ảnh, cũng không cần phụ thuộc dài theo chuỗi như GRU.
 
-  Tức là về mặt thiết kế kỹ thuật, đề tài giải quyết đúng hướng bài toán.
+### 8.5. Cross-Attention Fusion
 
-  13.2. Ở mức xác nhận hiệu năng cuối cùng ngoài thực địa
+#### a) Lý thuyết cross-attention
 
-  Chưa thể kết luận hoàn toàn từ repo hiện tại.
+Cross-attention là cơ chế cho phép một nguồn dữ liệu này học cách tham chiếu sang nguồn dữ liệu khác. Không giống phép nối vector đơn thuần (concatenation), cross-attention có khả năng học mối quan hệ phụ thuộc giữa các modality.
 
-  Vì:
-  - label hiện là proxy label
-  - chưa có bảng metrics train cuối cùng được chốt rõ
-  - endpoint AI serving hiện tại vẫn còn phần stub/mock trong một số đường chạy
-  - hệ thống đã đi rất xa về scaffold thực thi, nhưng chưa đủ bằng chứng để khẳng định “đạt production field performance”
+Về nguyên lý:
 
-  => cách kết luận chuẩn là:
+- Query lấy từ một nguồn đặc trưng
+- Key và Value lấy từ nguồn đặc trưng khác
+- Attention score xác định mức độ liên quan giữa các nguồn
 
-  ▎ Đề tài đã giải quyết đúng bài toán ở mức mô hình hóa, kiến trúc hệ thống, pipeline dữ liệu, và cơ chế suy luận - khuyến
-  ▎ nghị. Tuy nhiên, để khẳng định đầy đủ mức độ đáp ứng ngoài thực tế, vẫn cần thêm bước huấn luyện hoàn chỉnh, đánh giá
-  ▎ định lượng cuối cùng, và kiểm chứng với dữ liệu/nhãn thực địa mạnh hơn.
+Nhờ đó, mô hình không chỉ gộp thông tin mà còn học cách liên hệ thông tin giữa các nguồn với nhau.
 
-  ---
-  14. Thuật toán đã hoạt động ra sao? Giải thích chi tiết
+#### b) Cách vận dụng trong đề tài
 
-  Đây là phần anh có thể dùng làm “tim” của báo cáo.
+Trong đề tài:
 
-  14.1. Từ dữ liệu đến dự đoán
+- embedding ảnh đóng vai trò query
+- chuỗi cảm biến và token thời tiết đóng vai trò context
 
-  Khi hệ thống nhận yêu cầu cho một zone_id tại một timestamp:
+Cách thiết kế này cho phép mô hình học các mối liên hệ kiểu:
 
-  1. hệ thống tìm sample phù hợp của zone đó
-  2. nạp:
-    - ảnh Sentinel-2 4 kênh
-    - chuỗi cảm biến 48h
-    - vector thời tiết
-    - modality mask
-  3. chạy mô hình ONNX / wrapper suy luận
-  4. tạo ra:
-    - stress_prob
-    - attention_weights
-    - uncertainty
+- cùng một ảnh hiện tại nhưng nếu 48 giờ qua độ ẩm đất giảm liên tục thì khả năng stress cao hơn
+- cùng một biểu hiện thực vật trên ảnh nhưng nếu sắp có mưa lớn thì mức độ ưu tiên tưới có thể giảm
 
-  14.2. Vai trò từng nhánh
+Đây là điểm then chốt giúp mô hình mang đúng bản chất đa phương thức, thay vì chỉ ghép nhiều đầu vào một cách cơ học.
 
-  Nhánh ảnh
+### 8.6. Modality Dropout
 
-  Học dấu hiệu không gian của cây/đất:
-  - thay đổi phổ phản xạ
-  - suy giảm tín hiệu thực vật
-  - dấu hiệu liên quan tình trạng nước
+#### a) Lý thuyết
 
-  Nhánh GRU cảm biến
+Modality dropout là kỹ thuật ngẫu nhiên làm thiếu một hoặc nhiều nguồn dữ liệu trong quá trình huấn luyện. Mục đích là buộc mô hình học cách dự đoán bền vững ngay cả khi một số modality bị thiếu.
 
-  Học diễn biến theo thời gian:
-  - độ ẩm đất giảm ra sao
-  - mưa gần đây có cải thiện không
-  - nhiệt độ/độ ẩm môi trường thay đổi thế nào
+#### b) Cách vận dụng trong đề tài
 
-  Nhánh thời tiết
+Trong thực tế, ảnh có thể bị mây che, cảm biến có thể mất tín hiệu, hoặc nguồn thời tiết có thể cập nhật chậm. Vì vậy, đề tài sử dụng modality dropout trong quá trình huấn luyện để tăng tính robust cho hệ thống.
 
-  Học bối cảnh tổng quát:
-  - khả năng sắp mưa
-  - nhiệt độ cực đoan
-  - ET0 cao hay thấp
+Lý do chọn kỹ thuật này là vì hệ thống nông nghiệp thực tế hiếm khi có dữ liệu hoàn hảo ở mọi thời điểm.
 
-  Fusion
+### 8.7. MC Dropout để ước lượng độ bất định
 
-  Cross-attention giúp mô hình không nhìn từng nhánh độc lập, mà học quan hệ:
-  - ảnh hiện tại này nên hiểu thế nào nếu 48h qua đất khô dần?
-  - ảnh này có đáng lo nếu sắp có mưa lớn không?
+#### a) Lý thuyết
 
-  Đó là lý do thuật toán phù hợp với bài toán nông nghiệp hơn mô hình 1 nguồn đơn.
+MC Dropout (Monte Carlo Dropout) là kỹ thuật giữ dropout hoạt động cả ở pha suy luận, sau đó chạy nhiều lần forward pass trên cùng một mẫu. Trung bình các kết quả dự đoán cho ta giá trị dự đoán kỳ vọng, còn phương sai phản ánh độ bất định.
 
-  14.3. Uncertainty hoạt động thế nào
+Ưu điểm:
 
-  MC Dropout chạy nhiều lần:
-  - mỗi lần dự đoán hơi khác nhau
-  - nếu các lần khá giống nhau -> uncertainty thấp
-  - nếu các lần dao động mạnh -> uncertainty cao
+- đơn giản, dễ tích hợp
+- không cần thay đổi kiến trúc quá nhiều
+- phù hợp cho các bài toán cần nhận biết độ tin cậy của dự đoán
 
-  Điều này rất quan trọng vì:
-  - hệ thống biết khi nào nên tin kết quả
-  - khi uncertainty cao, decision engine có thể chọn hold thay vì tưới mạnh
+#### b) Cách vận dụng trong đề tài
 
-  14.4. Decision engine hoạt động thế nào
+Đề tài sử dụng MC Dropout để tính:
 
-  Sau khi có:
-  - stress probability
-  - uncertainty
-  - rain forecast
-  - soil moisture
-  - degraded mode
+- giá trị stress trung bình
+- mức dao động giữa các lần suy luận
+- confidence flag cho quyết định vận hành
 
-  Decision engine áp luật:
+Lý do chọn MC Dropout là vì quyết định tưới có liên quan trực tiếp đến tài nguyên và năng suất. Khi mô hình không chắc chắn, hệ thống cần biết điều đó để tránh quyết định quá mạnh.
 
-  1. nếu mưa sắp tới nhiều -> không tưới
-  2. nếu uncertainty quá cao hoặc degraded -> hold, yêu cầu xác nhận
-  3. nếu stress cao và đất khô -> heavy
-  4. nếu stress vừa và đất thiếu ẩm -> moderate
-  5. nếu stress bắt đầu tăng -> light
-  6. nếu khỏe -> no_irrigation
+---
 
-  Tức là AI không trực tiếp bật/tắt tưới, mà:
-  - AI đánh giá mức stress
-  - luật an toàn chuyển thành hành động vận hành
+## 9. Chúng ta vận dụng mô hình này để giải quyết bài toán như thế nào?
 
-  Đây là thiết kế rất hợp lý cho hệ thống nông nghiệp thực tế.
+Quy trình giải quyết của đề tài gồm các bước sau:
 
-  14.5. Giải thích đầu ra
+### Bước 1. Thu thập dữ liệu đa nguồn
 
-  Hệ thống còn sinh:
-  - attention_weights
-  - explanation
+Hệ thống thu thập dữ liệu ảnh, cảm biến, thời tiết và dữ liệu không gian vùng canh tác.
 
-  Mục đích:
-  - giúp người vận hành hiểu vì sao hệ thống đưa ra khuyến nghị
-  - tăng mức độ tin cậy
-  - tránh “hộp đen” hoàn toàn
+### Bước 2. Đồng bộ dữ liệu theo vùng và thời gian
 
-  Hiện phần giải thích vẫn ở mức:
-  - ánh xạ attention sang mức quan trọng của feature
-  - cho biết nhóm yếu tố nào ảnh hưởng nhiều
+Tất cả dữ liệu được căn chỉnh theo `zone_id` và `timestamp` để tạo ra các mẫu thống nhất.
 
-  Đây chưa phải explainability hoàn hảo, nhưng là bước quan trọng.
+### Bước 3. Tạo mẫu học máy
 
-  ---
-  15. Kết quả tổng quát của đề tài đến thời điểm hiện tại
+Mỗi mẫu học máy gồm:
 
-  Có thể tóm tắt như sau:
+- ảnh Sentinel-2 4 kênh
+- chuỗi cảm biến 48 giờ
+- vector thời tiết 6 chiều
+- modality mask
+- stress label dạng proxy
 
-  Đã đạt được
+### Bước 4. Huấn luyện mô hình đa phương thức
 
-  - xác định đúng bài toán stress nước và tưới tiêu
-  - xây dựng được kiến trúc dữ liệu đa nguồn
-  - xây dựng được mô hình học sâu đa phương thức
-  - có uncertainty estimation
-  - có post-processing
-  - có decision engine
-  - có backend API
-  - có frontend/dashboard design + flow
-  - có đường export ONNX và serving scaffold
-  - có tài liệu kiến trúc và roadmap khá đầy đủ
+Mô hình học:
 
-  Chưa chốt hoàn toàn
+- đặc trưng không gian từ ảnh qua EfficientNet-B3
+- đặc trưng thời gian từ cảm biến qua GRU + attention
+- đặc trưng ngữ cảnh từ thời tiết qua MLP
+- quan hệ giữa các nguồn qua cross-attention fusion
 
-  - chưa có báo cáo metric train cuối cùng rõ ràng trong repo
-  - nhãn hiện tại là proxy label
-  - một phần serving/inference vẫn còn dấu hiệu stub/mock ở flow runtime
-  - chưa đủ bằng chứng để kết luận production-ready ngoài thực địa
+### Bước 5. Sinh đầu ra stress
 
-  ---
-  16. Kết luận đề xuất để anh đưa vào báo cáo
+Mô hình xuất ra:
 
-  Anh có thể dùng kết luận kiểu này:
+- xác suất stress nước
+- độ bất định
+- thông tin giải thích và mức độ tin cậy
 
-  ▎ Đề tài AgMultida hướng tới xây dựng một hệ thống AI đa phương thức phục vụ phát hiện stress thiếu nước và hỗ trợ ra quyết
-  ▎  định tưới tiêu trong nông nghiệp. Hệ thống kết hợp dữ liệu ảnh viễn thám, chuỗi cảm biến môi trường, và dữ liệu thời
-  ▎ tiết để ước lượng mức độ stress nước theo từng vùng canh tác. Về mặt thuật toán, đề tài sử dụng kiến trúc học sâu đa
-  ▎ nhánh gồm EfficientNet-B3 cho ảnh, GRU cho dữ liệu chuỗi thời gian, MLP cho ngữ cảnh thời tiết, và cơ chế cross-attention
-  ▎  để hợp nhất đặc trưng. Ngoài ra, hệ thống còn áp dụng MC Dropout để ước lượng độ bất định và một decision engine dựa
-  ▎ trên luật để chuyển kết quả AI thành khuyến nghị tưới an toàn và dễ vận hành.
-  ▎
-  ▎ Kết quả hiện tại cho thấy đề tài đã xây dựng được đầy đủ khung kỹ thuật từ dữ liệu, mô hình, suy luận, giải thích, đến
-  ▎ tích hợp backend/frontend. Hệ thống thể hiện rõ khả năng giải quyết bài toán ở mức kiến trúc và quy trình xử lý. Tuy
-  ▎ nhiên, để khẳng định đầy đủ hiệu quả thực nghiệm và mức độ sẵn sàng triển khai ngoài thực tế, vẫn cần bổ sung bước huấn
-  ▎ luyện hoàn chỉnh, tổng hợp metric cuối cùng, và tăng cường xác thực trên dữ liệu/nhãn thực địa.
+### Bước 6. Hậu xử lý và hiệu chỉnh
 
-  ---
-  Nếu anh muốn, bước tiếp em có thể làm tiếp 1 trong 2:
+Đầu ra được đưa qua các bước như calibration, smoothing, confidence flag và degraded mode để tăng độ ổn định trước khi phục vụ quyết định.
 
-  1. chuyển báo cáo này thành văn phong học thuật hơn để đưa thẳng vào luận văn/báo cáo môn
-  2. tách thành từng chương mục:
-    - Chương 1 Giới thiệu
-    - Chương 2 Cơ sở lý thuyết
-    - Chương 3 Dữ liệu và tiền xử lý
-    - Chương 4 Mô hình và huấn luyện
-    - Chương 5 Hệ thống triển khai và kết quả
-    - Chương 6 Kết luận và hướng phát triển
+### Bước 7. Decision engine ra khuyến nghị tưới
 
-  Nếu anh muốn, em làm luôn bản chuẩn form báo cáo tiếp cho anh.
+Dựa trên:
 
-✻ Cogitated for 4m 41s
+- stress probability
+- uncertainty
+- soil moisture
+- rain forecast
+- degraded mode
 
-※ recap: Mục tiêu là hoàn thiện nội dung báo cáo tổng quan cho dự án AgMultida; em đã quét repo và my_docs rồi soạn xong 
-  khung báo cáo đầy đủ theo các mục anh yêu cầu. Bước tiếp theo là em chuyển nó thành bản văn phong học thuật hoặc chia thành
-   từng chương báo cáo hoàn chỉnh. (disable recaps in /config)
+hệ thống đưa ra các mức khuyến nghị:
+
+- no_irrigation
+- light
+- moderate
+- heavy
+- hold
+
+Như vậy, bài toán nghiên cứu không dừng ở mức dự đoán AI, mà được khép kín thành chuỗi xử lý từ dữ liệu đến hành động hỗ trợ tưới tiêu.
+
+---
+
+## 10. Quy trình xây dựng và huấn luyện mô hình
+
+Quy trình xây dựng mô hình gồm:
+
+1. Xác định đầu vào và đầu ra của từng mẫu.
+2. Xây dựng dataloader đa phương thức.
+3. Thiết kế ba encoder riêng cho ảnh, chuỗi thời gian và thời tiết.
+4. Thiết kế khối fusion bằng cross-attention.
+5. Xây dựng output head cho stress prediction.
+6. Bổ sung ước lượng bất định bằng MC Dropout.
+7. Bổ sung hậu xử lý và cơ chế giải thích đầu ra.
+
+Các thông số huấn luyện chính:
+
+- Optimizer: AdamW
+- Learning rate: 3e-4
+- Weight decay: 1e-4
+- Scheduler: OneCycleLR
+- Batch size: 32
+- Max epoch: 50
+- Early stopping patience: 7
+- AMP: bật
+
+Hàm mất mát chính:
+
+- MSE trên đầu ra sigmoid
+- có hỗ trợ label smoothing
+
+Việc chọn AdamW và OneCycleLR giúp quá trình học ổn định hơn, tối ưu tốt với mạng sâu hiện đại và giảm nguy cơ overfitting.
+
+---
+
+## 11. Kết quả đạt được
+
+### 11.1. Kết quả về dữ liệu và hệ thống
+
+Đến thời điểm hiện tại, đề tài đã đạt được các kết quả rõ ràng về mặt hạ tầng dữ liệu và mô hình:
+
+- Xây dựng được pipeline dữ liệu đa nguồn.
+- Thu thập được dữ liệu Sentinel-2, thời tiết và dữ liệu môi trường phục vụ bài toán.
+- Xây dựng được contract dữ liệu cho học máy và suy luận.
+- Xây dựng được kiến trúc mô hình học sâu đa phương thức hoàn chỉnh.
+- Có pipeline training, inference và export ONNX.
+- Có post-processing, uncertainty estimation và decision engine.
+- Có tích hợp backend/frontend phục vụ khai thác kết quả.
+
+Ngoài ra, trạng thái dữ liệu trong repo cho thấy:
+
+- Sentinel-2 thu được 13 scene
+- 6/6 zone đạt pass
+- Open-Meteo pass
+- CHIRPS pass ở mức nguồn dữ liệu
+
+### 11.2. Kết quả về mặt mô hình
+
+Về mặt mô hình, đề tài đã đạt được các kết quả quan trọng sau:
+
+1. Xây dựng được mô hình Deep Learning đa phương thức phù hợp với bài toán stress nước.
+2. Mô hình có khả năng kết hợp thông tin từ ảnh, chuỗi thời gian và thời tiết thay vì phụ thuộc vào một nguồn đơn lẻ.
+3. Mô hình có khả năng vận hành trong bối cảnh dữ liệu thiếu nhờ modality dropout và modality mask.
+4. Mô hình có khả năng ước lượng độ bất định, giúp hệ thống an toàn hơn khi hỗ trợ quyết định tưới.
+5. Kết quả đầu ra không chỉ là giá trị dự đoán mà còn kèm thông tin giải thích và độ tin cậy.
+
+### 11.3. Kết quả định lượng
+
+Tại thời điểm tổng hợp báo cáo, repo hiện có đã thể hiện rõ:
+
+- kiến trúc mô hình
+- pipeline huấn luyện
+- pipeline suy luận
+- đường dẫn triển khai mô hình
+
+Tuy nhiên, repo chưa chốt đầy đủ một bảng metric huấn luyện cuối cùng ở mức báo cáo chính thức như:
+
+- MAE
+- RMSE
+- R²
+- AUROC hoặc F1 nếu quy đổi sang ngưỡng phân lớp
+- checkpoint production cuối cùng đã xác thực
+
+Vì vậy, cách trình bày phù hợp và trung thực là:
+
+> Đề tài đã xây dựng hoàn chỉnh pipeline dữ liệu, kiến trúc mô hình học sâu đa phương thức, cơ chế suy luận và hỗ trợ quyết định. Kết quả hiện tại cho thấy hệ thống đã giải quyết tốt bài toán ở mức mô hình hóa và kiến trúc triển khai. Tuy nhiên, các chỉ số định lượng cuối cùng của mô hình vẫn cần được tổng hợp đầy đủ từ các lần huấn luyện thực nghiệm cuối trước khi có thể kết luận chính thức về hiệu năng tối ưu.
+
+---
+
+## 12. Đánh giá mô hình
+
+### 12.1. Ưu điểm của mô hình
+
+Mô hình đề xuất có nhiều ưu điểm phù hợp với bài toán:
+
+- Tận dụng được dữ liệu đa nguồn, phản ánh bài toán toàn diện hơn.
+- Kết hợp tốt thông tin không gian, thời gian và ngữ cảnh khí tượng.
+- Có khả năng hoạt động bền vững hơn khi thiếu một phần dữ liệu.
+- Có cơ chế đánh giá độ bất định, giúp giảm rủi ro khi ra quyết định tưới.
+- Có khả năng mở rộng và tích hợp vào hệ thống backend/frontend.
+
+### 12.2. Hạn chế của mô hình
+
+Bên cạnh ưu điểm, mô hình vẫn còn một số hạn chế:
+
+- Nhãn hiện tại là proxy label, chưa phải ground-truth thực địa hoàn chỉnh.
+- Chưa có bảng đánh giá định lượng cuối cùng được chốt rõ ràng trong repo hiện tại.
+- Một số thành phần phục vụ suy luận và AI serving vẫn còn thiên về scaffold triển khai.
+- Hiệu năng ngoài thực địa cần được kiểm chứng thêm bằng dữ liệu thực nghiệm thực tế.
+
+### 12.3. Đánh giá mức độ phù hợp với bài toán
+
+Xét về mặt lựa chọn kiến trúc, mô hình là phù hợp với bài toán vì:
+
+- ảnh viễn thám phù hợp cho nhận biết dấu hiệu sinh lý cây trồng trên không gian
+- GRU phù hợp cho mô hình hóa xu hướng môi trường theo thời gian
+- MLP phù hợp cho dữ liệu thời tiết tổng hợp
+- cross-attention phù hợp cho việc liên hệ giữa các modality
+- MC Dropout phù hợp cho bài toán hỗ trợ quyết định cần độ an toàn
+
+Nói cách khác, mỗi thuật toán được chọn đều có lý do rõ ràng và gắn trực tiếp với đặc thù dữ liệu của đề tài.
+
+### 12.4. Hướng đánh giá định lượng nên bổ sung
+
+Để đánh giá mô hình đầy đủ hơn trong giai đoạn tiếp theo, cần bổ sung các chỉ số:
+
+- MAE
+- RMSE
+- R²
+- Calibration error
+- độ ổn định khi thiếu modality
+- so sánh với baseline đơn nguồn hoặc mô hình concat đơn giản
+
+Ngoài ra nên thực hiện:
+
+- ablation study cho từng nhánh dữ liệu
+- so sánh GRU với LSTM hoặc Transformer temporal encoder
+- so sánh cross-attention với concat fusion
+- đánh giá ngoài thực địa với nhãn đo thực
+
+---
+
+## 13. Kết luận
+
+Đề tài AgMultida đã xây dựng được một hướng tiếp cận phù hợp cho bài toán phát hiện stress thiếu nước và hỗ trợ tưới tiêu trong nông nghiệp thông minh. Điểm nổi bật của đề tài là sử dụng mô hình học sâu đa phương thức, kết hợp dữ liệu ảnh viễn thám, chuỗi cảm biến môi trường và dữ liệu thời tiết để ước lượng mức độ stress nước theo từng vùng canh tác.
+
+Về mặt thuật toán, đề tài vận dụng hợp lý nhiều phương pháp như EfficientNet-B3 cho ảnh, GRU kết hợp attention cho chuỗi thời gian, MLP cho dữ liệu thời tiết, cross-attention cho hợp nhất đặc trưng, modality dropout để tăng độ bền và MC Dropout để ước lượng độ bất định. Việc lựa chọn các thuật toán này xuất phát trực tiếp từ đặc thù dữ liệu và yêu cầu thực tiễn của bài toán.
+
+Kết quả hiện tại cho thấy đề tài đã đạt được khung kỹ thuật khá đầy đủ từ thu thập dữ liệu, tiền xử lý, xây dựng nhãn, huấn luyện mô hình, suy luận, đánh giá độ tin cậy, đến tích hợp khuyến nghị tưới. Tuy nhiên, để khẳng định mạnh hơn hiệu quả thực nghiệm của mô hình, đề tài vẫn cần bổ sung bảng kết quả huấn luyện cuối cùng, đánh giá định lượng đầy đủ và kiểm chứng bằng dữ liệu thực địa trong các giai đoạn tiếp theo.
+
+Nhìn chung, đề tài đã giải quyết đúng hướng bài toán cả ở mức nghiên cứu lẫn mức xây dựng hệ thống, đồng thời tạo nền tảng tốt để tiếp tục mở rộng thành hệ thống hỗ trợ tưới tiêu thông minh có khả năng ứng dụng thực tế cao.

@@ -15,6 +15,7 @@ from backend.api_gateway.lifespan import initialize_application_state, shutdown_
 from backend.core.config import get_settings
 from backend.core.errors import AgTechError, mask_internal_exception
 from backend.features.alerts.router import router as alerts_router
+from backend.features.auth.router import router as auth_router
 from backend.features.commands.router import router as commands_router
 from backend.features.health.router import router as health_router
 from backend.features.imagery.router import router as imagery_router
@@ -80,10 +81,11 @@ async def trace_id_middleware(request: Request, call_next):
 
 
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(zones_router)
 app.include_router(prediction_router, dependencies=ADMIN_WRITE_DEPENDENCIES)
 app.include_router(recommendation_router, dependencies=ADMIN_WRITE_DEPENDENCIES)
 app.include_router(commands_router, dependencies=ADMIN_WRITE_DEPENDENCIES)
-app.include_router(imagery_router, dependencies=ADMIN_READ_DEPENDENCIES)
+app.include_router(imagery_router)
 app.include_router(alerts_router, dependencies=ADMIN_WRITE_DEPENDENCIES)
 app.include_router(websocket_router)

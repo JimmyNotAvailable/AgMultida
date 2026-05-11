@@ -23,7 +23,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
+os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production-32b")
 
 from fastapi.testclient import TestClient
 
@@ -141,7 +141,7 @@ class TestProductionFailFast:
     def test_stub_disabled_blocks_stub_gateway_mode(self):
         with pytest.raises(RuntimeError, match="GATEWAY_MODE=stub"):
             Settings(
-                JWT_SECRET="test-secret-not-for-production",
+                JWT_SECRET="test-secret-not-for-production-32b",
                 ALLOW_STUBS=False,
                 GATEWAY_MODE="stub",
             )

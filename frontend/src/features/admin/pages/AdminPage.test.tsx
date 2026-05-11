@@ -7,6 +7,7 @@ import { AdminPage } from './AdminPage'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 test('admin readiness panel sanitizes upstream errors', async () => {
@@ -59,7 +60,7 @@ test('admin table renders multiple zones and row click seeds forms', async () =>
 
   renderAdminPage()
 
-  await waitFor(() => expect(screen.getByTestId('zone-table').textContent).toContain('A02'))
+  await waitFor(() => expect(screen.getByTestId('zone-table').textContent).toContain('TN01'))
   fireEvent.click(screen.getByTestId('zone-row-D01'))
 
   await waitFor(() => expect(screen.getAllByDisplayValue('D01').length).toBeGreaterThanOrEqual(3))
@@ -136,8 +137,8 @@ function zoneListFixture() {
       {
         zone: {
           zone_id: 'A01',
-          zone_name: 'An Giang validation zone A01',
-          province: 'An Giang',
+          zone_name: 'Mỹ Thiện',
+          province: 'Đồng Tháp',
           crop_type: 'rice',
           split: 'train',
           local_timezone: 'Asia/Ho_Chi_Minh',
@@ -149,9 +150,9 @@ function zoneListFixture() {
       },
       {
         zone: {
-          zone_id: 'A02',
-          zone_name: 'An Giang validation zone A02',
-          province: 'An Giang',
+          zone_id: 'TN01',
+          zone_name: 'Mộc Hoá',
+          province: 'Tây Ninh',
           crop_type: 'rice',
           split: 'train',
           local_timezone: 'Asia/Ho_Chi_Minh',

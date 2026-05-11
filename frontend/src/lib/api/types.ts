@@ -193,3 +193,37 @@ export class ApiError extends Error {
     this.body = body
   }
 }
+
+export interface SpectralScene {
+  zone_id: string
+  dt: number
+  satellite: string
+  cloud_cover: number
+  data_coverage: number
+  ndvi_image_url: string | null
+  evi_image_url: string | null
+  truecolor_image_url: string | null
+  falsecolor_image_url: string | null
+  ndvi_tile_url: string | null
+  ndvi_stats_url: string | null
+}
+
+export interface NdviHistoryPoint {
+  dt: number
+  source: string
+  cloud_cover: number
+  mean: number
+  median: number
+  min: number
+  max: number
+  std: number
+  p25: number
+  p75: number
+}
+
+export interface SpectralResponse {
+  zone_id: string
+  polygon_id: string
+  scenes: SpectralScene[]
+  ndvi_history: NdviHistoryPoint[]
+}

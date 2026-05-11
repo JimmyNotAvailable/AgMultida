@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
+os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production-32b")
 
 from backend.ai_serving.main import ManifestSampleStore, app
 from backend.core.config import get_settings
@@ -147,7 +147,7 @@ def test_internal_predict_rejects_missing_custom_internal_api_key_header(monkeyp
 
 
 def test_readyz_requires_internal_api_key(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("INTERNAL_API_KEY", "test-secret-not-for-production")
+    monkeypatch.setenv("INTERNAL_API_KEY", "test-secret-not-for-production-32b")
     get_settings.cache_clear()
     with TestClient(app) as client:
         resp = client.get("/readyz")
@@ -157,10 +157,10 @@ def test_readyz_requires_internal_api_key(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_readyz_shape(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("INTERNAL_API_KEY", "test-secret-not-for-production")
+    monkeypatch.setenv("INTERNAL_API_KEY", "test-secret-not-for-production-32b")
     get_settings.cache_clear()
     with TestClient(app) as client:
-        resp = client.get("/readyz", headers={"X-Internal-API-Key": "test-secret-not-for-production"})
+        resp = client.get("/readyz", headers={"X-Internal-API-Key": "test-secret-not-for-production-32b"})
         assert resp.status_code == 200
         body = resp.json()
         assert "status" in body
@@ -171,13 +171,13 @@ def test_readyz_shape(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_readyz_degraded_content(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("INTERNAL_API_KEY", "test-secret-not-for-production")
+    monkeypatch.setenv("INTERNAL_API_KEY", "test-secret-not-for-production-32b")
     get_settings.cache_clear()
     with TestClient(app) as client:
         app.state.pipeline = None
         app.state.sample_store = None
         app.state.readiness_error = "not ready"
-        resp = client.get("/readyz", headers={"X-Internal-API-Key": "test-secret-not-for-production"})
+        resp = client.get("/readyz", headers={"X-Internal-API-Key": "test-secret-not-for-production-32b"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "degraded"

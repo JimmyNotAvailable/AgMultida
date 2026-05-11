@@ -1,4 +1,4 @@
-import { buildFallbackDecision, buildFallbackPrediction, buildFallbackStatus, getZoneById, zoneMap, zones } from '../../features/dashboard/dashboardData'
+import { zoneMap, zones } from '../../features/dashboard/dashboardData'
 import { apiRequest, getApiBaseUrl } from './client'
 import { ApiError, type ApiErrorBody } from './types'
 import type {
@@ -13,6 +13,7 @@ import type {
   ReadinessResponse,
   RecommendFromCacheRequest,
   RecommendRequest,
+  SpectralResponse,
   ZoneAlertFeedResponse,
   ZoneListResponse,
   ZoneRegistryResponse,
@@ -27,32 +28,18 @@ export function getReadiness(): Promise<ReadinessResponse> {
   return apiRequest<ReadinessResponse>('/v1/readyz')
 }
 
-export async function predict(request: PredictRequest): Promise<PredictResponse> {
-  try {
-    return await apiRequest<PredictResponse>('/v1/predict', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    })
-  } catch (error) {
-    if (shouldUseLocalFallback(error)) {
-      return buildFallbackPrediction(getZoneById(request.zone_id))
-    }
-    throw error
-  }
+export function predict(request: PredictRequest): Promise<PredictResponse> {
+  return apiRequest<PredictResponse>('/v1/predict', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
 }
 
-export async function recommend(request: RecommendRequest): Promise<IrrigationDecision> {
-  try {
-    return await apiRequest<IrrigationDecision>('/v1/recommend', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    })
-  } catch (error) {
-    if (shouldUseLocalFallback(error)) {
-      return buildFallbackDecision(getZoneById(request.zone_id))
-    }
-    throw error
-  }
+export function recommend(request: RecommendRequest): Promise<IrrigationDecision> {
+  return apiRequest<IrrigationDecision>('/v1/recommend', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
 }
 
 export async function recommendFromCache(request: RecommendFromCacheRequest): Promise<IrrigationDecision> {
@@ -74,34 +61,8 @@ export function createCommandWithAck(request: IrrigationCommandRequest, ack: boo
   })
 }
 
-export async function getZones(): Promise<ZoneRegistryResponse> {
-  try {
-    return await apiRequest<ZoneRegistryResponse>('/v1/zones')
-  } catch (error) {
-    if (shouldUseLocalFallback(error)) {
-      return {
-        trace_id: 'demo-zones',
-        zones: zones.map((zone) => ({
-          zone: {
-            zone_id: zone.id,
-            zone_name: zone.name,
-            province: zone.province,
-            crop_type: zone.crop,
-            split: 'validation',
-            local_timezone: 'Asia/Ho_Chi_Minh',
-          },
-          bounds: {
-            min_lng: 105.05,
-            min_lat: 10.05,
-            max_lng: 105.11,
-            max_lat: 10.11,
-          },
-          centroid: [105.08, 10.08],
-        })),
-      }
-    }
-    throw error
-  }
+export function getZones(): Promise<ZoneRegistryResponse> {
+  return apiRequest<ZoneRegistryResponse>('/v1/zones')
 }
 
 export async function getZoneRegistry(): Promise<ZoneRegistryResponse> {
@@ -140,31 +101,12 @@ export async function getZoneList(): Promise<ZoneListResponse> {
 
 export type ZoneListItem = ZoneListResponse['zones'][number]
 
-export async function getZoneStatus(zoneId: string): Promise<ZoneStatusResponse> {
-  try {
-    return await apiRequest<ZoneStatusResponse>(`/v1/zones/${encodeURIComponent(zoneId)}/status`)
-  } catch (error) {
-    if (shouldUseLocalFallback(error)) {
-      return buildFallbackStatus(getZoneById(zoneId))
-    }
-    throw error
-  }
+export function getZoneStatus(zoneId: string): Promise<ZoneStatusResponse> {
+  return apiRequest<ZoneStatusResponse>(`/v1/zones/${encodeURIComponent(zoneId)}/status`)
 }
 
-export async function getZoneAlerts(zoneId: string): Promise<ZoneAlertFeedResponse> {
-  try {
-    return await apiRequest<ZoneAlertFeedResponse>(`/v1/zones/${encodeURIComponent(zoneId)}/alerts`)
-  } catch (error) {
-    if (shouldUseLocalFallback(error)) {
-      const fallback = buildFallbackStatus(getZoneById(zoneId))
-      return {
-        trace_id: fallback.trace_id,
-        zone_id: fallback.zone_id,
-        alerts: fallback.alerts ?? [],
-      }
-    }
-    throw error
-  }
+export function getZoneAlerts(zoneId: string): Promise<ZoneAlertFeedResponse> {
+  return apiRequest<ZoneAlertFeedResponse>(`/v1/zones/${encodeURIComponent(zoneId)}/alerts`)
 }
 
 export function acknowledgeAlert(alertId: string): Promise<ZoneAlertFeedResponse['alerts'][number]> {
@@ -214,7 +156,7 @@ export function getImageryBounds(zoneId: string): [number, number, number, numbe
   const feature = zoneMap.features.find((item) => item.properties.zone_id === zoneId)
   const coordinates = feature?.geometry.coordinates[0]
   if (!coordinates?.length) {
-    return [105.05, 10.05, 105.11, 10.11]
+    return [105.921679, 10.438994, 105.929597, 10.454166]
   }
   const lngs = coordinates.map(([lng]) => lng)
   const lats = coordinates.map(([, lat]) => lat)
@@ -234,29 +176,23 @@ export function buildFallbackImagery(zoneId: string): ImageryScene {
   }
 }
 
-export async function getZoneImageryLatestSafe(zoneId: string): Promise<ImageryScene> {
-  try {
-    return await getZoneImageryLatest(zoneId)
-  } catch (error) {
-    if (shouldUseLocalFallback(error)) {
-      return buildFallbackImagery(zoneId)
-    }
-    throw error
-  }
+export function getZoneImageryLatestSafe(zoneId: string): Promise<ImageryScene> {
+  return getZoneImageryLatest(zoneId)
 }
 
-export async function getZoneImageryHistorySafe(zoneId: string, limit = 10): Promise<ImagerySceneCollection> {
+export function getZoneImageryHistorySafe(zoneId: string, limit = 10): Promise<ImagerySceneCollection> {
+  return getZoneImageryHistory(zoneId, limit)
+}
+
+export async function getZoneSpectral(zoneId: string): Promise<SpectralResponse> {
+  return apiRequest<SpectralResponse>(`/v1/zones/${encodeURIComponent(zoneId)}/spectral/latest`)
+}
+
+export async function getZoneSpectralSafe(zoneId: string): Promise<SpectralResponse | null> {
   try {
-    return await getZoneImageryHistory(zoneId, limit)
-  } catch (error) {
-    if (shouldUseLocalFallback(error)) {
-      return {
-        trace_id: `demo-${zoneId}-imagery-history`,
-        zone_id: zoneId,
-        scenes: [buildFallbackImagery(zoneId)],
-      }
-    }
-    throw error
+    return await getZoneSpectral(zoneId)
+  } catch {
+    return null
   }
 }
 

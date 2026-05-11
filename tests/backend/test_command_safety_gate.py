@@ -169,7 +169,7 @@ class TestCommandSafetyServiceIntegration:
     @pytest.mark.anyio
     async def test_ensure_allowed_raises_agtech_error_with_correct_shape(self):
         cache = PredictionCacheService()
-        settings = Settings(JWT_SECRET="test-secret-not-for-production", AUTH_REQUIRED=False)
+        settings = Settings(JWT_SECRET="test-secret-not-for-production-32b", AUTH_REQUIRED=False)
         service = CommandSafetyService(cache, settings)
         req = make_command_request()
 
@@ -187,7 +187,7 @@ class TestCommandSafetyServiceIntegration:
     async def test_ensure_allowed_passes_with_valid_prediction(self):
         cache = PredictionCacheService()
         await cache.store_success(make_prediction(), "live")
-        settings = Settings(JWT_SECRET="test-secret-not-for-production", AUTH_REQUIRED=False)
+        settings = Settings(JWT_SECRET="test-secret-not-for-production-32b", AUTH_REQUIRED=False)
         service = CommandSafetyService(cache, settings)
         req = make_command_request()
 
@@ -198,7 +198,7 @@ class TestCommandSafetyServiceIntegration:
         prediction = make_prediction(uncertainty=0.35, confidence_flag=ConfidenceFlag.LOW)
         cache = PredictionCacheService()
         await cache.store_success(prediction, "live")
-        settings = Settings(JWT_SECRET="test-secret-not-for-production", AUTH_REQUIRED=False)
+        settings = Settings(JWT_SECRET="test-secret-not-for-production-32b", AUTH_REQUIRED=False)
         service = CommandSafetyService(cache, settings)
         req = make_command_request()
 

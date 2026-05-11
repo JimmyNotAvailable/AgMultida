@@ -18,6 +18,7 @@ from backend.decision_engine.alert_engine import AlertRepository
 from backend.features.alerts.service import AlertService
 from backend.features.alerts.telegram_worker import TelegramWorker, TelegramWorkerConfig
 from backend.features.commands.service import CommandSafetyService
+from backend.features.imagery.polling import sentinel_polling_loop
 from backend.features.prediction.cache import PredictionCacheService
 from backend.features.prediction.service import PredictionService
 from backend.features.recommendation.service import DecisionCacheService, RecommendationService
@@ -46,6 +47,8 @@ def initialize_application_state(application: FastAPI) -> None:
     application.state.alert_service = AlertService()
     application.state.websocket_manager = WebSocketManager()
     application.state.websocket_subscriber_task = None
+    application.state.sentinel_polling_task = None
+    application.state.sentinel_processed_scenes = {}
     application.state.recommendation_service = RecommendationService(application.state.prediction_cache, application.state.decision_cache, application.state.alert_service)
     application.state.zone_status_aggregate = ZoneStatusService(application.state.prediction_cache, application.state.decision_cache)
     application.state.command_safety_service = CommandSafetyService(application.state.prediction_cache, get_settings())
@@ -117,6 +120,8 @@ async def configure_domain_services(application: FastAPI, settings) -> None:
     application.state.zone_status_aggregate = ZoneStatusService(application.state.prediction_cache, application.state.decision_cache, application.state.prediction_cache._redis_client)
     application.state.command_safety_service = CommandSafetyService(application.state.prediction_cache, settings)
     application.state.alert_repository = AlertRepository()
+    application.state.sentinel_processed_scenes = {}
+    application.state.sentinel_polling_task = maybe_start_sentinel_polling(application, settings)
 
 
 async def maybe_start_websocket_subscriber(application: FastAPI):
@@ -124,6 +129,12 @@ async def maybe_start_websocket_subscriber(application: FastAPI):
         return None
     subscriber = RedisSubscriber(application.state.websocket_manager)
     return asyncio.create_task(subscriber.run_forever(application.state.prediction_cache._redis_client))
+
+
+def maybe_start_sentinel_polling(application: FastAPI, settings):
+    if settings.IMAGERY_POLL_INTERVAL_SECONDS < 1:
+        return None
+    return asyncio.create_task(sentinel_polling_loop(application), name="sentinel-polling")
 
 
 def maybe_start_telegram_worker(application: FastAPI, settings):
@@ -153,6 +164,9 @@ async def shutdown_application_services(application: FastAPI) -> None:
     telegram_task = getattr(application.state, "telegram_worker_task", None)
     if telegram_task is not None:
         telegram_task.cancel()
+    sentinel_task = getattr(application.state, "sentinel_polling_task", None)
+    if sentinel_task is not None:
+        sentinel_task.cancel()
     if hasattr(application.state, "ai_client") and hasattr(application.state.ai_client, "close"):
         await application.state.ai_client.close()
     if hasattr(application.state, "ingestion_client") and hasattr(application.state.ingestion_client, "close"):

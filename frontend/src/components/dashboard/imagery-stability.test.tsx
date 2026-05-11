@@ -16,7 +16,7 @@ const baseScene = {
 
 test('fresh cloudy stale badges render from imagery metadata', () => {
   render(<ZoneImageryPanel latest={baseScene} history={null} mode="rgb" isLoading={false} isError={false} onModeChange={() => undefined} />)
-  expect(screen.getByTestId('imagery-status').textContent).toBe('Fresh')
+  expect(screen.getByTestId('imagery-status').textContent).toBe('Mới cập nhật')
 })
 
 test('timeline images lazy load', () => {
@@ -27,5 +27,5 @@ test('timeline images lazy load', () => {
 
 test('placeholder degraded state visible when latest missing preview', () => {
   render(<ZoneImageryPanel latest={{ ...baseScene, rgb_url: null, ndvi_url: null, stale: true }} history={null} mode="rgb" isLoading={false} isError={false} onModeChange={() => undefined} />)
-  expect(screen.getByText('Placeholder imagery')).toBeTruthy()
+  expect(screen.getByText('Chưa có ảnh RGB cho vùng này.')).toBeTruthy()
 })

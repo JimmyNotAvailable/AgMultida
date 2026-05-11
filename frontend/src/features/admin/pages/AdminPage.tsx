@@ -1,6 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { LanguageToggle } from '../../../components/shared/LanguageToggle'
 import { ThemeToggle } from '../../../components/shared/ThemeToggle'
 import { createCommand, getHealth, getReadiness, getZoneStatus, getZones, predict, recommend } from '../../../lib/api'
 import { ApiError } from '../../../lib/api/types'
@@ -135,7 +134,6 @@ export function AdminPage() {
             <div className="section-copy">Gateway operations surface</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <LanguageToggle />
             <ThemeToggle />
           </div>
         </header>

@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef } from 'react'
 import { DEFAULT_MAP_PADDING, DEFAULT_MAP_STYLE } from '../../lib/maps/maplibre-config'
 import { getImageryImageCoordinates, getImageryOverlayUrl } from '../../lib/api'
 import type { ImageryScene } from '../../lib/api/types'
-import { getZoneById, zoneMap } from '../../features/dashboard/dashboardData'
+import { getZoneById, zoneMap, type ZoneData } from '../../features/dashboard/dashboardData'
 
 interface ZoneMapProps {
   selectedZoneId: string
+  zones: ZoneData[]
   onSelect: (zoneId: string) => void
   imagery: ImageryScene | null
   imageryMode: 'rgb' | 'ndvi'
@@ -36,17 +37,51 @@ const IMAGERY_SOURCE_ID = 'zone-imagery'
 const IMAGERY_LAYER_ID = 'zone-imagery-image'
 const EMPTY_PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
 
-function buildZoneGeoJson(selectedZoneId: string): GeoJSON.FeatureCollection {
+function buildBoundsFeature(zone: ZoneData): GeoJSON.Feature | null {
+  if (!zone.bounds) {
+    return null
+  }
+
+  const { min_lng: minLng, min_lat: minLat, max_lng: maxLng, max_lat: maxLat } = zone.bounds
   return {
-    ...zoneMap,
-    features: zoneMap.features.map((feature) => ({
-      ...feature,
-      properties: {
-        ...feature.properties,
-        state: getZoneById(feature.properties.zone_id).state,
-        active: feature.properties.zone_id === selectedZoneId,
-      },
-    })),
+    type: 'Feature',
+    properties: {
+      zone_id: zone.id,
+      zone_name: zone.name,
+      province: zone.province,
+      crop_type: zone.crop,
+    },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        [minLng, minLat],
+        [maxLng, minLat],
+        [maxLng, maxLat],
+        [minLng, maxLat],
+        [minLng, minLat],
+      ]],
+    },
+  }
+}
+
+function buildZoneGeoJson(selectedZoneId: string, zones: ZoneData[]): GeoJSON.FeatureCollection {
+  const registryFeatures = zones.map(buildBoundsFeature).filter((feature): feature is GeoJSON.Feature => feature !== null)
+  const sourceFeatures = registryFeatures.length > 0 ? registryFeatures : zoneMap.features
+
+  return {
+    type: 'FeatureCollection',
+    features: sourceFeatures.map((feature) => {
+      const zoneId = String(feature.properties?.zone_id ?? '')
+      const zone = zones.find((item) => item.id === zoneId) ?? getZoneById(zoneId)
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          state: zone.state,
+          active: zoneId === selectedZoneId,
+        },
+      }
+    }),
   }
 }
 
@@ -62,17 +97,32 @@ function getActiveImagery(imagery: ImageryScene | null, imageryMode: 'rgb' | 'nd
   return imagery.ndvi_url ? imagery : null
 }
 
+function getImageryCoordinates(selectedZoneId: string, zones: ZoneData[]): [[number, number], [number, number], [number, number], [number, number]] {
+  const bounds = zones.find((zone) => zone.id === selectedZoneId)?.bounds
+  if (!bounds) {
+    return getImageryImageCoordinates(selectedZoneId)
+  }
+
+  return [
+    [bounds.min_lng, bounds.max_lat],
+    [bounds.max_lng, bounds.max_lat],
+    [bounds.max_lng, bounds.min_lat],
+    [bounds.min_lng, bounds.min_lat],
+  ]
+}
+
 function syncImageryLayer(
   controller: MapController,
   imagery: ImageryScene | null,
   imageryMode: 'rgb' | 'ndvi',
   imageryVisible: boolean,
   selectedZoneId: string,
+  zones: ZoneData[],
 ) {
   const imageUrl = imagery ? getImageryOverlayUrl(imagery, imageryMode) : null
   controller.imagerySource?.updateImage({
     url: imageUrl ?? EMPTY_PIXEL,
-    coordinates: getImageryImageCoordinates(selectedZoneId),
+    coordinates: getImageryCoordinates(selectedZoneId, zones),
   })
 
   if (controller.map.getLayer(IMAGERY_LAYER_ID)) {
@@ -80,9 +130,14 @@ function syncImageryLayer(
   }
 }
 
-function fitToZones(map: MapLibreMap) {
-  const coordinates = zoneMap.features.flatMap((feature) => feature.geometry.coordinates[0])
-  const [firstLng, firstLat] = coordinates[0]
+function fitToZones(map: MapLibreMap, geoJson: GeoJSON.FeatureCollection) {
+  const coordinates = geoJson.features.flatMap((feature) => {
+    if (feature.geometry.type !== 'Polygon') {
+      return []
+    }
+    return feature.geometry.coordinates[0]
+  })
+  const [firstLng, firstLat] = coordinates[0] ?? [105.97, 10.58]
   const bounds = coordinates.reduce(
     (acc, [lng, lat]) => {
       acc[0][0] = Math.min(acc[0][0], lng)
@@ -102,7 +157,7 @@ function canBootMapLibre(): boolean {
     && typeof window.URL?.createObjectURL === 'function'
 }
 
-export function ZoneMap({ selectedZoneId, onSelect, imagery, imageryMode, imageryVisible }: ZoneMapProps) {
+export function ZoneMap({ selectedZoneId, zones, onSelect, imagery, imageryMode, imageryVisible }: ZoneMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const controllerRef = useRef<MapController | null>(null)
   const onSelectRef = useRef(onSelect)
@@ -110,6 +165,7 @@ export function ZoneMap({ selectedZoneId, onSelect, imagery, imageryMode, imager
   const imageryRef = useRef(imagery)
   const imageryModeRef = useRef(imageryMode)
   const imageryVisibleRef = useRef(imageryVisible)
+  const zonesRef = useRef(zones)
 
   useEffect(() => {
     onSelectRef.current = onSelect
@@ -131,7 +187,11 @@ export function ZoneMap({ selectedZoneId, onSelect, imagery, imageryMode, imager
     imageryVisibleRef.current = imageryVisible
   }, [imageryVisible])
 
-  const geoJson = useMemo(() => buildZoneGeoJson(selectedZoneId), [selectedZoneId])
+  useEffect(() => {
+    zonesRef.current = zones
+  }, [zones])
+
+  const geoJson = useMemo(() => buildZoneGeoJson(selectedZoneId, zones), [selectedZoneId, zones])
 
   useEffect(() => {
     if (!containerRef.current || controllerRef.current || !canBootMapLibre()) {
@@ -149,7 +209,7 @@ export function ZoneMap({ selectedZoneId, onSelect, imagery, imageryMode, imager
       const map = new maplibregl.Map({
         container: containerRef.current,
         style: DEFAULT_MAP_STYLE,
-        center: [105.45, 10.28],
+        center: [105.97, 10.58],
         zoom: 7,
         attributionControl: { compact: true },
       })
@@ -157,7 +217,7 @@ export function ZoneMap({ selectedZoneId, onSelect, imagery, imageryMode, imager
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
       map.on('load', () => {
-        const initialGeoJson = buildZoneGeoJson(selectedZoneIdRef.current)
+        const initialGeoJson = buildZoneGeoJson(selectedZoneIdRef.current, zonesRef.current)
         const initialImagery = getActiveImagery(imageryRef.current, imageryModeRef.current)
 
         map.addSource(SOURCE_ID, {
@@ -233,8 +293,9 @@ export function ZoneMap({ selectedZoneId, onSelect, imagery, imageryMode, imager
           imageryModeRef.current,
           imageryVisibleRef.current,
           selectedZoneIdRef.current,
+          zonesRef.current,
         )
-        fitToZones(map)
+        fitToZones(map, initialGeoJson)
       })
 
       map.on('click', FILL_LAYER_ID, (event) => {
@@ -274,8 +335,8 @@ export function ZoneMap({ selectedZoneId, onSelect, imagery, imageryMode, imager
       return
     }
 
-    syncImageryLayer(controller, getActiveImagery(imagery, imageryMode), imageryMode, imageryVisible, selectedZoneId)
-  }, [imagery, imageryMode, imageryVisible, selectedZoneId])
+    syncImageryLayer(controller, getActiveImagery(imagery, imageryMode), imageryMode, imageryVisible, selectedZoneId, zones)
+  }, [imagery, imageryMode, imageryVisible, selectedZoneId, zones])
 
   return <div ref={containerRef} className="zone-map-canvas" aria-label="AgMultida zone map" />
 }

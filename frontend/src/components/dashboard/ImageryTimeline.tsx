@@ -11,19 +11,19 @@ interface ImageryTimelineProps {
 
 export function ImageryTimeline({ scenes, selectedSceneId, isLoading, isError, onSelect }: ImageryTimelineProps) {
   if (isLoading) {
-    return <p className="section-copy" data-testid="imagery-timeline-loading">Loading imagery history...</p>
+    return <p className="section-copy" data-testid="imagery-timeline-loading">Đang tải lịch sử ảnh...</p>
   }
 
   if (isError) {
-    return <p className="section-copy" data-testid="imagery-timeline-error">Imagery history unavailable.</p>
+    return <p className="section-copy" data-testid="imagery-timeline-error">Không thể tải lịch sử ảnh vệ tinh.</p>
   }
 
   if (!scenes.length) {
-    return <p className="section-copy">No imagery history yet.</p>
+    return <p className="section-copy">Chưa có lịch sử ảnh cho vùng này.</p>
   }
 
   return (
-    <div className="imagery-timeline" aria-label="Imagery timeline" data-testid="imagery-timeline">
+    <div className="imagery-timeline" aria-label="Lịch sử ảnh vệ tinh" data-testid="imagery-timeline">
       {scenes.slice(0, 10).map((scene, index) => {
         const previewUrl = toAbsoluteApiUrl(scene.rgb_url ?? scene.ndvi_url ?? null)
         return (
@@ -34,9 +34,9 @@ export function ImageryTimeline({ scenes, selectedSceneId, isLoading, isError, o
             onClick={() => onSelect(scene)}
             data-testid="imagery-timeline-scene"
           >
-            {previewUrl ? <img src={previewUrl} alt={`Scene ${index + 1}`} loading="lazy" /> : <span className="timeline-empty" />}
-            <strong>{scene.acquisition_time ? new Date(scene.acquisition_time).toLocaleDateString() : `Scene ${index + 1}`}</strong>
-            {scene.stale ? <span className="timeline-stale">Stale</span> : null}
+            {previewUrl ? <img src={previewUrl} alt={`Cảnh ảnh ${index + 1}`} loading="lazy" /> : <span className="timeline-empty" />}
+            <strong>{scene.acquisition_time ? new Date(scene.acquisition_time).toLocaleDateString('vi-VN') : `Cảnh ảnh ${index + 1}`}</strong>
+            {scene.stale ? <span className="timeline-stale">Dữ liệu cũ</span> : null}
           </button>
         )
       })}

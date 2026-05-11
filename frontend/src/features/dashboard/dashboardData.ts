@@ -2,6 +2,13 @@ import type { IrrigationDecision, PredictResponse, ZoneStatusResponse } from '..
 
 export type ZoneState = 'healthy' | 'moderate' | 'critical'
 
+export interface ZoneBounds {
+  min_lng: number
+  min_lat: number
+  max_lng: number
+  max_lat: number
+}
+
 export interface ZoneData {
   id: string
   label: string
@@ -17,6 +24,8 @@ export interface ZoneData {
   state: ZoneState
   path: string
   note: string
+  bounds?: ZoneBounds
+  centroid?: [number, number]
 }
 
 export interface ZoneMapFeature {
@@ -39,41 +48,58 @@ export interface ZoneMapCollection {
 }
 
 export const zones: ZoneData[] = [
-  { id: 'A01', label: 'Zone A01', name: 'An Giang A01', province: 'An Giang', crop: 'Rice', stress: 0.22, moisture: 39, rain: 0.28, uncertainty: 0.18, rec: 'no_irrigation', volume: 0, state: 'healthy', path: 'M0 128 C80 118 120 116 180 106 S290 82 360 96 S470 137 540 118 S680 72 760 88 S840 110 900 86', note: 'image, sensor, weather aligned' },
-  { id: 'A02', label: 'Zone A02', name: 'An Giang A02', province: 'An Giang', crop: 'Rice', stress: 0.46, moisture: 26, rain: 0.18, uncertainty: 0.24, rec: 'light', volume: 8, state: 'moderate', path: 'M0 118 C90 104 128 122 202 96 S320 74 404 84 S540 132 602 106 S730 82 900 66', note: 'weather synced' },
-  { id: 'A03', label: 'Zone A03', name: 'An Giang A03', province: 'An Giang', crop: 'Rice', stress: 0.78, moisture: 18, rain: 0.12, uncertainty: 0.34, rec: 'heavy', volume: 28, state: 'critical', path: 'M0 98 C78 106 152 86 218 72 S330 64 412 76 S506 122 594 70 S724 44 900 34', note: 'sensor drift watch' },
-  { id: 'D01', label: 'Zone D01', name: 'Dong Thap D01', province: 'Dong Thap', crop: 'Rice', stress: 0.57, moisture: 22, rain: 0.09, uncertainty: 0.41, rec: 'moderate', volume: 18, state: 'moderate', path: 'M0 126 C82 116 144 128 210 100 S350 80 430 96 S558 144 630 96 S750 72 900 58', note: 'image missing' },
-  { id: 'E01', label: 'Zone E01', name: 'Can Tho E01', province: 'Can Tho', crop: 'Rice', stress: 0.31, moisture: 33, rain: 0.24, uncertainty: 0.21, rec: 'light', volume: 6, state: 'healthy', path: 'M0 136 C90 128 142 120 214 112 S340 94 418 104 S548 138 624 118 S762 88 900 92', note: 'stable trend' },
-  { id: 'F01', label: 'Zone F01', name: 'Kien Giang F01', province: 'Kien Giang', crop: 'Rice', stress: 0.69, moisture: 20, rain: 0.14, uncertainty: 0.29, rec: 'moderate', volume: 22, state: 'critical', path: 'M0 106 C86 98 148 102 216 84 S342 68 420 82 S526 126 610 82 S742 54 900 48', note: 'recovery watch' },
+  {
+    id: 'DT01', label: 'Zone DT01', name: 'Mỹ Thiện', province: 'Đồng Tháp', crop: 'Rice',
+    stress: 0.35, moisture: 32, rain: 0.22, uncertainty: 0.20, rec: 'light', volume: 6,
+    state: 'healthy',
+    path: 'M0 128 C80 118 120 116 180 106 S290 82 360 96 S470 137 540 118 S680 72 760 88 S840 110 900 86',
+    note: 'Khu vực giám sát thực địa',
+    bounds: { min_lng: 105.921679, min_lat: 10.438994, max_lng: 105.929597, max_lat: 10.454166 },
+    centroid: [105.925638, 10.446580],
+  },
+  {
+    id: 'TN01', label: 'Zone TN01', name: 'Mộc Hoá', province: 'Tây Ninh', crop: 'Rice',
+    stress: 0.48, moisture: 25, rain: 0.16, uncertainty: 0.26, rec: 'moderate', volume: 14,
+    state: 'moderate',
+    path: 'M0 118 C90 104 128 122 202 96 S320 74 404 84 S540 132 602 106 S730 82 900 66',
+    note: 'Khu vực giám sát thực địa',
+    bounds: { min_lng: 106.012877, min_lat: 10.710084, max_lng: 106.029082, max_lat: 10.725379 },
+    centroid: [106.020279, 10.717732],
+  },
 ]
 
 export const zoneMap: ZoneMapCollection = {
   type: 'FeatureCollection',
-  features: zones.map((zone, index) => {
-    const col = index % 3
-    const row = Math.floor(index / 3)
-    const x = 105.05 + col * 0.08
-    const y = 10.05 + row * 0.08
-    return {
+  features: [
+    {
       type: 'Feature',
-      properties: {
-        zone_id: zone.id,
-        zone_name: zone.name,
-        province: zone.province,
-        crop_type: zone.crop,
-      },
+      properties: { zone_id: 'DT01', zone_name: 'Mỹ Thiện', province: 'Đồng Tháp', crop_type: 'Rice' },
       geometry: {
         type: 'Polygon',
         coordinates: [[
-          [x, y],
-          [x + 0.06, y + 0.01],
-          [x + 0.05, y + 0.055],
-          [x + 0.01, y + 0.06],
-          [x, y],
+          [105.921894, 10.454166],
+          [105.929597, 10.453069],
+          [105.928803, 10.438994],
+          [105.921679, 10.444522],
+          [105.921894, 10.454166],
         ]],
       },
-    }
-  }),
+    },
+    {
+      type: 'Feature',
+      properties: { zone_id: 'TN01', zone_name: 'Mộc Hoá', province: 'Tây Ninh', crop_type: 'Rice' },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [106.012877, 10.721116],
+          [106.019098, 10.725379],
+          [106.029082, 10.714467],
+          [106.019159, 10.710084],
+          [106.012877, 10.721116],
+        ]],
+      },
+    },
+  ],
 }
 
 export function getZoneById(zoneId: string): ZoneData {

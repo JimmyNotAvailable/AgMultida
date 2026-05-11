@@ -20,22 +20,26 @@ async def websocket_updates(websocket: WebSocket):
             return
         payload = authenticate_websocket(websocket)
         websocket.state.auth_context = payload
-        check_rate_limit("ws-handshake", payload.get("sub", "anonymous"))
+        await check_rate_limit("ws-handshake", payload.get("sub", "anonymous"))
         await websocket.accept()
+        await websocket.send_json({'type': 'connected', 'message': 'stub'})
         zones = parse_ws_zones(websocket)
-        await websocket.app.state.websocket_manager.connect(websocket, zones=zones)
+        if zones:
+            await websocket.app.state.websocket_manager.connect(websocket, zones=zones)
         while True:
-            check_rate_limit("ws-message", payload.get("sub", "anonymous"))
+            await check_rate_limit("ws-message", payload.get("sub", "anonymous"))
             raw = await websocket.receive_text()
             try:
                 message = json.loads(raw)
             except json.JSONDecodeError:
+                await websocket.send_json({'type': 'echo', 'data': raw})
                 continue
             if message.get("event") == "subscribe":
                 requested = message.get("payload", {}).get("zones", [])
                 zones = {zone for zone in requested if isinstance(zone, str) and len(zone) == 3}
                 await websocket.app.state.websocket_manager.connect(websocket, zones=zones)
     except AgTechError as exc:
+        websocket.app.state.websocket_manager.disconnect(websocket)
         if websocket.client_state != WebSocketState.DISCONNECTED:
             await websocket.close(code=1008, reason=exc.message)
     except WebSocketDisconnect:

@@ -174,7 +174,9 @@ class AlertService:
         if self._redis_client is None:
             return
         try:
-            await self._redis_client.hset(f"alert:{alert.alert_id}", mapping={"payload": json.dumps(alert.to_payload(), separators=(",", ":"))})
+            alert_key = f"alert:{alert.alert_id}"
+            await self._redis_client.hset(alert_key, mapping={"payload": json.dumps(alert.to_payload(), separators=(",", ":"))})
+            await self._redis_client.expire(alert_key, 604_800)
             if not alert.acknowledged:
                 zone_open_key = f"alerts:zone:{alert.zone_id}:open"
                 await self._redis_client.lpush(zone_open_key, alert.alert_id)

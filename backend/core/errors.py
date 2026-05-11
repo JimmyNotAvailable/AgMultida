@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
@@ -47,7 +47,7 @@ class ErrorResponse(BaseModel):
     message: str
     details: dict[str, Any] = Field(default_factory=dict)
     trace_id: UUID = Field(default_factory=uuid4)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AgTechError(Exception):

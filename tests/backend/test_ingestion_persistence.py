@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production')
+os.environ.setdefault('JWT_SECRET', 'test-secret-not-for-production-32b')
 os.environ.setdefault('INTERNAL_API_KEY', 'test-internal-key-123456')
 
 from backend.ingestion_service.main import app  # noqa: E402

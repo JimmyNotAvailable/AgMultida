@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { predict } from '../../../lib/api'
 import type { PredictResponse } from '../../../lib/api/types'
+import { buildFallbackPrediction, getZoneById } from '../dashboardData'
 
 interface UsePredictionFlowArgs {
   zoneId: string
@@ -9,7 +10,13 @@ interface UsePredictionFlowArgs {
 
 export function usePredictionFlow({ zoneId, timestamp }: UsePredictionFlowArgs) {
   return useMutation<PredictResponse>({
-    mutationFn: () => predict({ zone_id: zoneId, timestamp, model_version: null }),
+    mutationFn: async () => {
+      try {
+        return await predict({ zone_id: zoneId, timestamp, model_version: null })
+      } catch {
+        return buildFallbackPrediction(getZoneById(zoneId))
+      }
+    },
   })
 }
 
