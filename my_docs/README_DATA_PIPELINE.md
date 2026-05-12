@@ -1,8 +1,10 @@
-# Data Collection Runbook
+# Data Collection and Processing Runbook
 
-This scaffold prepares public-source data collection for the multimodal water stress dataset. It does not contain production credentials or downloaded primary data.
+This runbook summarizes the Phase 1 dataset pipeline for multimodal water stress monitoring. It covers public-source data collection and the downstream processing boundary before model training.
 
-## AOI
+## Scope
+
+This scaffold does not contain production credentials or downloaded primary data.
 
 The current DATA_4A metadata targets Vietnam's Mekong Delta for pipeline validation:
 
@@ -49,6 +51,17 @@ Allowed source statuses are `PASS`, `WARN`, `FAIL`, `BLOCKED_AUTH`, `SOURCE_DELA
 
 Do not commit real credential files. Earth Engine, CDS, and Earthdata credentials must remain user-local or environment-provided.
 
-## Phase 1 Status
+## Processing Stages
+
+1. Build a Sentinel-2 image index with RGB, NIR, NDVI, cloud metadata, and source trace.
+2. Build hourly environmental features from ERA5-Land, CHIRPS, SMAP, and optional Open-Meteo cross-checks.
+3. Align multimodal samples using Sentinel-2 timestamp `t0` as the anchor.
+4. Generate traceable proxy stress labels in the `[0, 1]` range.
+5. Create spatiotemporal splits that avoid zone-time leakage.
+6. Package artifacts with checksums and validate the dataset contract.
+
+## Phase 1 Boundary
+
+Processing stops after dataset validation and versioning. Model training is out of scope for this phase.
 
 The repository currently contains realtime-ready metadata and tests for registry/schema validation. Real data collection must wait for explicit approval and credential preflight.
