@@ -13,13 +13,16 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 import httpx
+from pydantic import ValidationError
 
-from core.schemas import (
+from backend.features.prediction.policy import PREDICTION_MODALITY_UNCERTAINTY_PENALTY, PREDICTION_TIMEOUT_DEGRADE_MS
+
+from backend.core.schemas import (
     ConfidenceFlag,
     PredictRequest,
     PredictResponse,
 )
-from core.errors import AgTechError, ErrorCode
+from backend.core.errors import AgTechError, ErrorCode
 
 
 @runtime_checkable
@@ -27,6 +30,8 @@ class AIClient(Protocol):
     """Structural contract for AI serving communication."""
 
     async def predict(self, req: PredictRequest) -> PredictResponse: ...
+
+    async def ready(self) -> dict[str, object]: ...
 
 
 class StubAIClient:
@@ -49,6 +54,9 @@ class StubAIClient:
             latency_ms=42.0,
         )
 
+    async def ready(self) -> dict[str, object]:
+        return {"status": "stub"}
+
 
 class LiveAIClient:
     """Calls ai-serving /internal/predict via async HTTP.
@@ -60,17 +68,36 @@ class LiveAIClient:
     - HTTPError        -> INFERENCE_FAILED  (502)
     """
 
-    def __init__(self, http_client: httpx.AsyncClient) -> None:
+    def __init__(
+        self,
+        http_client: httpx.AsyncClient,
+        internal_api_key: str = "",
+        header_name: str = "X-Internal-API-Key",
+    ) -> None:
         self._client = http_client
+        self._internal_headers = (
+            {header_name: internal_api_key}
+            if internal_api_key
+            else {}
+        )
 
     async def predict(self, req: PredictRequest) -> PredictResponse:
         try:
             resp = await self._client.post(
                 "/internal/predict",
-                content=req.model_dump_json(),
+                json=req.model_dump(mode="json"),
+                headers=self._internal_headers or None,
             )
             resp.raise_for_status()
-            return PredictResponse.model_validate(resp.json())
+            prediction = PredictResponse.model_validate(resp.json())
+            return self._apply_transport_policy(prediction)
+        except (ValueError, ValidationError) as exc:
+            raise AgTechError(
+                error_code=ErrorCode.INFERENCE_FAILED,
+                message="AI serving returned an invalid response",
+                status_code=502,
+                details={"service": "ai_serving", "reason": "invalid_response"},
+            ) from exc
         except httpx.TimeoutException as exc:
             raise AgTechError(
                 error_code=ErrorCode.INFERENCE_TIMEOUT,
@@ -92,6 +119,48 @@ class LiveAIClient:
                 status_code=502,
                 details={"service": "ai_serving"},
             ) from exc
+
+    def _apply_transport_policy(self, prediction: PredictResponse) -> PredictResponse:
+        degraded = prediction.degraded_mode or prediction.latency_ms > PREDICTION_TIMEOUT_DEGRADE_MS
+        uncertainty = prediction.uncertainty
+        if len(prediction.attention_weights) < 3:
+            uncertainty = min(1.0, uncertainty + PREDICTION_MODALITY_UNCERTAINTY_PENALTY)
+        return prediction.model_copy(
+            update={
+                "degraded_mode": degraded,
+                "confidence_flag": ConfidenceFlag.LOW if degraded else prediction.confidence_flag,
+                "uncertainty": uncertainty,
+            }
+        )
+
+    async def ready(self) -> dict[str, object]:
+        try:
+            resp = await self._client.get(
+                "/readyz",
+                headers=self._internal_headers or None,
+            )
+            resp.raise_for_status()
+            body = resp.json()
+            return {
+                "status": body.get("status", "degraded"),
+                "model_loaded": body.get("model_loaded"),
+                "manifest_loaded": body.get("manifest_loaded"),
+                "upstream_last_error": body.get("readiness_error"),
+            }
+        except httpx.TimeoutException:
+            return {
+                "status": "degraded",
+                "model_loaded": None,
+                "manifest_loaded": None,
+                "upstream_last_error": "AI serving readiness probe timed out",
+            }
+        except httpx.HTTPError:
+            return {
+                "status": "degraded",
+                "model_loaded": None,
+                "manifest_loaded": None,
+                "upstream_last_error": "AI serving readiness probe failed",
+            }
 
     async def close(self) -> None:
         """Shutdown hook: release connection pool."""

@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
@@ -27,10 +27,15 @@ class ErrorCode(str, enum.Enum):
     INFERENCE_FAILED = "INFERENCE_FAILED"
     VALVE_ACK_TIMEOUT = "VALVE_ACK_TIMEOUT"
     COMMAND_FAILED = "COMMAND_FAILED"
+    COMMAND_BLOCKED_HIGH_UNCERTAINTY = "COMMAND_BLOCKED_HIGH_UNCERTAINTY"
+    COMMAND_BLOCKED_DEGRADED_PREDICTION = "COMMAND_BLOCKED_DEGRADED_PREDICTION"
+    COMMAND_BLOCKED_NO_RECENT_PREDICTION = "COMMAND_BLOCKED_NO_RECENT_PREDICTION"
+    PREDICTION_CACHE_MISS = "PREDICTION_CACHE_MISS"
     AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
     AUTH_EXPIRED_TOKEN = "AUTH_EXPIRED_TOKEN"
     AUTH_INSUFFICIENT_ROLE = "AUTH_INSUFFICIENT_ROLE"
     AUTH_INVALID_API_KEY = "AUTH_INVALID_API_KEY"
+    RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED"
     TELEMETRY_REJECTED = "TELEMETRY_REJECTED"
     DEGRADED_SERVICE = "DEGRADED_SERVICE"
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -42,7 +47,7 @@ class ErrorResponse(BaseModel):
     message: str
     details: dict[str, Any] = Field(default_factory=dict)
     trace_id: UUID = Field(default_factory=uuid4)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AgTechError(Exception):

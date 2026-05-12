@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import ast
+import hmac
 import logging
-import sys
+from uuid import uuid4
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,19 +12,17 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from ai_system.calibration import StressCalibrator
 from ai_system.mc_dropout_wrapper import AIInferencePipeline
 from ai_system.audit import AuditLogger
 from ai_system.xai_explainer import explain_attention
-from ai_serving.onnx_wrapper import OnnxInferenceWrapper
-from core.config import get_settings
-from core.errors import AgTechError, ErrorCode, mask_internal_exception
-from core.schemas import ConfidenceFlag, HealthResponse, PredictRequest, PredictResponse
+from backend.ai_serving.onnx_wrapper import OnnxInferenceWrapper
+from backend.core.config import get_settings
+from backend.core.errors import AgTechError, ErrorCode, mask_internal_exception
+from backend.core.schemas import ConfidenceFlag, HealthResponse, PredictRequest, PredictResponse
 
 try:
     import onnxruntime as ort
@@ -186,8 +185,24 @@ async def healthz() -> HealthResponse:
     return HealthResponse()
 
 
+@app.get('/public-healthz', response_model=HealthResponse)
+async def public_healthz() -> HealthResponse:
+    return HealthResponse()
+
+
 @app.get("/readyz")
 async def readyz(request: Request) -> dict[str, Any]:
+    settings = request.app.state.settings
+    expected_key = settings.INTERNAL_API_KEY
+    header_name = settings.INTERNAL_API_KEY_HEADER
+    provided_key = request.headers.get(header_name)
+    if not provided_key or not hmac.compare_digest(provided_key, expected_key):
+        raise AgTechError(
+            error_code=ErrorCode.AUTH_INVALID_API_KEY,
+            message="Invalid internal API key.",
+            details={"source_service": "api_gateway"},
+            status_code=401,
+        )
     pipeline_ready = request.app.state.pipeline is not None
     manifest_ready = request.app.state.sample_store is not None
     ready = pipeline_ready and manifest_ready and request.app.state.readiness_error is None
@@ -197,6 +212,7 @@ async def readyz(request: Request) -> dict[str, Any]:
         "manifest_loaded": manifest_ready,
         "mode": request.app.state.settings.AI_SERVING_MODE,
         "readiness_error": request.app.state.readiness_error,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -204,15 +220,24 @@ async def readyz(request: Request) -> dict[str, Any]:
 async def internal_predict(
     req: PredictRequest,
     request: Request,
-    x_internal_api_key: str | None = Header(default=None, alias="X-Internal-API-Key"),
 ):
     settings = request.app.state.settings
     expected_key = settings.INTERNAL_API_KEY
-    if expected_key and x_internal_api_key != expected_key:
+    header_name = settings.INTERNAL_API_KEY_HEADER
+    provided_key = request.headers.get(header_name)
+    if not provided_key or not hmac.compare_digest(provided_key, expected_key):
+        trace_id = uuid4()
+        logger.warning(
+            "Rejected internal auth service=api_gateway path=/internal/predict trace_id=%s source_service=%s",
+            trace_id,
+            "api_gateway",
+        )
         raise AgTechError(
             error_code=ErrorCode.AUTH_INVALID_API_KEY,
             message="Invalid internal API key.",
+            details={"source_service": "api_gateway"},
             status_code=401,
+            trace_id=trace_id,
         )
 
     if request.app.state.pipeline is None or request.app.state.sample_store is None:

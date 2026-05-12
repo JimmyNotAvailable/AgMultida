@@ -54,3 +54,15 @@ data/**
 logs/
 logs/*
 logs/**
+
+# Frontend generated cache
+frontend/node_modules/.vite/
+frontend/tsconfig.tsbuildinfo
+frontend/playwright-report.json
+frontend/playwright-results/
+frontend/test-results/
+
+# Large local artifacts
+/data.rar
+/colab_missing_training_files.tar.gz
+/colab_training_outputs.tar.gz
