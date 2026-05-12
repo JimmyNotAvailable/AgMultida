@@ -7,24 +7,20 @@ STUB: logic implemented per contract, Redis Stream + MQTT deferred to Batch 3+.
 from __future__ import annotations
 
 import hmac
-import sys
-from pathlib import Path
 from uuid import uuid4
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from core.config import get_settings
-from core.schemas import (
+from backend.core.config import get_settings
+from backend.core.schemas import (
     ConfidenceFlag,
     HealthResponse,
     IrrigationDecision,
     RecAction,
     RecommendRequest,
 )
-from core.errors import AgTechError, ErrorCode, mask_internal_exception
+from backend.core.errors import AgTechError, ErrorCode, mask_internal_exception
 
 app = FastAPI(title="AgMultida Decision Engine", version="1.0.0")
 

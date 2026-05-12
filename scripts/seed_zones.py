@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'backend'))
 
 from psycopg import connect
 
-from core.config import get_settings
+from backend.core.config import get_settings
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ZONE_REGISTRY_PATH = PROJECT_ROOT / 'metadata' / 'zone_registry.csv'

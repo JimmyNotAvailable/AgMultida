@@ -18,8 +18,8 @@ _backend_root = str(Path(__file__).resolve().parent.parent / "backend")
 if _backend_root not in sys.path:
     sys.path.insert(0, _backend_root)
 
-from decision_engine.main import evaluate_decision  # noqa: E402 -- path setup above
-from core.schemas import RecommendRequest, IrrigationDecision  # noqa: E402
+from backend.decision_engine.main import evaluate_decision  # noqa: E402 -- path setup above
+from backend.core.schemas import RecommendRequest, IrrigationDecision  # noqa: E402
 
 
 def make_decision(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.errors import AgTechError, ErrorCode
+from backend.core.errors import AgTechError, ErrorCode
 
 
 Coordinate = tuple[float, float]

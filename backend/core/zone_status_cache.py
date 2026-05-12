@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from core.schemas import ZoneStatusResponse
+from backend.core.schemas import ZoneStatusResponse
 
 
 @dataclass(frozen=True)

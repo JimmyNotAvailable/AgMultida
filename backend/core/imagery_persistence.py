@@ -4,8 +4,8 @@ import json
 from datetime import datetime
 from typing import Any
 
-from core.db import execute, fetch_all, fetch_one
-from core.schemas import ImageryScene, ImagerySceneCollection
+from backend.core.db import execute, fetch_all, fetch_one
+from backend.core.schemas import ImageryScene, ImagerySceneCollection
 
 SCENE_COLUMNS = 'zone_id, scene_id, acquisition_time, cloud_cover, rgb_url, ndvi_url, source, fetched_at'
 

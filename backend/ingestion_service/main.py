@@ -2,21 +2,17 @@
 from __future__ import annotations
 
 import hmac
-import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 from uuid import uuid4
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from core.config import get_settings
-from core.db import check_database_ready, close_db_pool, ensure_device_registered, execute, fetch_one, open_db_pool
-from core.errors import AgTechError, ErrorCode, mask_internal_exception
-from core.schemas import HealthResponse, TelemetryIngestRequest, TelemetryIngestResponse
+from backend.core.config import get_settings
+from backend.core.db import check_database_ready, close_db_pool, ensure_device_registered, execute, fetch_one, open_db_pool
+from backend.core.errors import AgTechError, ErrorCode, mask_internal_exception
+from backend.core.schemas import HealthResponse, TelemetryIngestRequest, TelemetryIngestResponse
 
 
 @asynccontextmanager

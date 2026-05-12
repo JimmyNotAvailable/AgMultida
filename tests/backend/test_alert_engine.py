@@ -5,10 +5,10 @@ import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "backend"))
-os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production-32b")
 
-from decision_engine.alert_engine import AlertEvaluationInput, AlertRepository, evaluate_alerts
+from backend.decision_engine.alert_engine import AlertEvaluationInput, AlertRepository, evaluate_alerts
 
 
 NOW = datetime(2026, 5, 9, 8, 0, tzinfo=timezone.utc)

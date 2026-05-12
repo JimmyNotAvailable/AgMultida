@@ -7,7 +7,7 @@ Synced with: contracts/data_contract.yaml, contracts/decision_contract.yaml
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
@@ -46,6 +46,36 @@ class FeatureImportance(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+
+
+class RefreshRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: str = Field(min_length=1)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    role: str
+    username: str
+
+
+class MeResponse(BaseModel):
+    username: str
+    role: str
+
+
+# ---------------------------------------------------------------------------
 # Predict
 # ---------------------------------------------------------------------------
 class PredictRequest(BaseModel):
@@ -60,6 +90,7 @@ class PredictRequest(BaseModel):
 class PredictResponse(BaseModel):
     """Stress prediction result with uncertainty and XAI payload."""
     trace_id: UUID = Field(default_factory=uuid4)
+    prediction_id: Optional[str] = None
     zone_id: str
     timestamp: datetime
     stress_prob: float = Field(ge=0.0, le=1.0)
@@ -85,6 +116,15 @@ class RecommendRequest(BaseModel):
     degraded_mode: bool = False
     soil_moisture: float = Field(ge=0.0, le=100.0)
     rain_forecast_3h: float = Field(ge=0.0, le=1.0)
+    attention_weights: list[float] = Field(default_factory=list)
+
+
+class RecommendFromCacheRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    zone_id: str = Field(pattern=r"^[A-Z]\d{2}$")
+    soil_moisture: float = Field(default=35.0, ge=0.0, le=100.0)
+    rain_forecast_3h: float = Field(default=0.0, ge=0.0, le=1.0)
     attention_weights: list[float] = Field(default_factory=list)
 
 
@@ -238,4 +278,4 @@ class HealthResponse(BaseModel):
     """Liveness/readiness probe for k8s. Added per Senior Review."""
     status: str = "ok"
     version: str = "1.0.0"
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

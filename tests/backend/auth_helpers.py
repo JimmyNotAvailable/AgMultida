@@ -11,12 +11,13 @@ def make_token(role: str = 'admin', subject: str = 'test-user') -> str:
         {
             'sub': subject,
             'role': role,
+            'type': 'access',
             'iss': 'agmultida',
             'aud': 'agmultida-admin',
             'iat': now,
             'exp': now + timedelta(minutes=30),
         },
-        'test-secret-not-for-production',
+        'test-secret-not-for-production-32b',
         algorithm='HS256',
     )
 
